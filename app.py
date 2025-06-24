@@ -88,13 +88,7 @@ camera_index = st.sidebar.selectbox("Select Camera", [0, 1, 2, 3], index=0)
 def get_model():
     return load_model()
 
-try:
-    model = get_model()
-    model_names = model.names if hasattr(model, 'names') else ['PET Bottle']
-except Exception as e:
-    st.error(f"Error loading model: {str(e)}")
-    model = None
-    model_names = ['PET Bottle']
+model = get_model()
 
 # Main content
 col1, col2 = st.columns([2, 1])
@@ -106,10 +100,10 @@ with col1:
     
     # Detection statistics
     st.subheader("Detection Statistics")
-    stats_cols = st.columns(len(model_names))
-    for idx, name in enumerate(model_names):
+    stats_cols = st.columns(len(model.names))
+    for idx, name in enumerate(model.names):
         with stats_cols[idx]:
-            st.metric(str(name), st.session_state.detection_counts[name])
+            st.metric(name, st.session_state.detection_counts[name])
 
 with col2:
     # Detection charts
@@ -144,4 +138,4 @@ try:
             break
             
 finally:
-    cap.release()
+    cap.release() 
