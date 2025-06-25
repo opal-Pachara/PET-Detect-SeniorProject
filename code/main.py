@@ -18,7 +18,7 @@ sys.path.append(str(Path(__file__).parent.parent / "model-yolov5s"))
 
 # Import local modules with aliases to avoid conflicts
 from config import AppConfig, ModelConfig, UIConfig, ErrorMessages
-from app_utils import ImageUtils, ValidationUtils, ErrorHandler, PerformanceUtils, BottleAnalyzer, ColorAnalyzer
+from app_utils import ImageUtils, ValidationUtils, ErrorHandler, PerformanceUtils, BottleAnalyzer, ColorAnalyzer, draw_bottle_size_on_image
 
 # Custom CSS styles
 class Styles:
@@ -642,40 +642,46 @@ class UIComponents:
                 detector = PETDetector(AppConfig.MODEL_PATH)
                 if not detector.load_model():
                     return
-                
                 # Convert PIL to numpy array
                 img_array = np.array(image)
-                
                 # Perform advanced detection and analysis
                 result_img, predictions, model_names, bottle_analyses = detector.detect_and_analyze_bottles(img_array, confidence_threshold)
-                
+                # วาดตัวเลขขนาดบน bounding box ถ้ามี bottle_analyses
+                if bottle_analyses:
+                    # ต้องแน่ใจว่าแต่ละ analysis มี bbox (x1, y1, x2, y2)
+                    for i, analysis in enumerate(bottle_analyses):
+                        if 'bbox' not in analysis:
+                            # หา bbox จาก predictions
+                            if i < len(predictions):
+                                pred = predictions[i]
+                                if hasattr(pred, 'cpu'):
+                                    pred_np = pred.cpu().numpy()
+                                else:
+                                    pred_np = pred
+                                analysis['bbox'] = [int(v) for v in pred_np[:4]]
+                result_img_with_size = draw_bottle_size_on_image(result_img, bottle_analyses)
                 if len(predictions) > 0:
                     st.session_state.detection_results = {
-                        'image': result_img,
+                        'image': result_img_with_size,
                         'predictions': predictions,
                         'model_names': model_names,
                         'bottle_analyses': bottle_analyses
                     }
-                    
                     st.success(f"{UIConfig.ICONS['success']} Detected {len(predictions)} object(s)!")
-                    st.image(result_img, caption="Detection Results", use_column_width=True)
-                    
+                    st.image(result_img_with_size, caption="Detection Results (with size)", use_column_width=True)
                     # Display advanced analysis results
                     if bottle_analyses:
                         UIComponents._display_advanced_analysis_results(bottle_analyses, reference_width)
                     else:
                         st.info("No bottles detected for advanced analysis.")
-                    
                     # Display basic detection details
                     UIComponents._display_detection_details(predictions, model_names)
-                    
                     # Calculate and display score
                     score, counts = ScoreCalculator.calculate_score(predictions, model_names)
                     st.info(f"คะแนนที่ได้: {score}")
                     st.write(f"ขวด: {counts['bottle']}, ฝา: {counts['cap']}, สลาก: {counts['label']}")
                 else:
                     st.warning(f"{UIConfig.ICONS['warning']} {ErrorMessages.DETECTION_ERRORS['no_objects']}")
-                    
             except Exception as e:
                 error_msg = ErrorHandler.handle_detection_error(e)
                 st.error(f"{UIConfig.ICONS['error']} {error_msg}")

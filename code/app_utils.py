@@ -467,4 +467,39 @@ class Constants:
         'file_too_large': 'File size too large. Please upload a smaller image.',
         'processing_error': 'Error processing image. Please try again.',
         'no_detections': 'No objects detected with current confidence threshold.'
-    } 
+    }
+
+def draw_bottle_size_on_image(image: np.ndarray, bottle_analyses: list) -> np.ndarray:
+    """
+    วาด bounding box และตัวเลขขนาด (เช่น ความสูง, ปริมาตร) ลงบนภาพ
+    :param image: ภาพต้นฉบับ (np.ndarray, RGB)
+    :param bottle_analyses: list ของ dict ที่มี 'size' และ 'bbox' (x1, y1, x2, y2)
+    :return: ภาพที่วาด overlay แล้ว (np.ndarray, RGB)
+    """
+    img = image.copy()
+    for analysis in bottle_analyses:
+        size_info = analysis.get('size', {})
+        bbox = analysis.get('bbox', None)
+        if bbox is None:
+            continue
+        x1, y1, x2, y2 = [int(v) for v in bbox]
+        # วาดกรอบ
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        # เตรียมข้อความขนาด
+        if size_info.get('calibrated', False):
+            h = size_info.get('height_mm', 0)
+            v = size_info.get('volume_ml', 0)
+            text = f"H: {h:.0f} mm | V: {v:.0f} ml"
+        else:
+            h = size_info.get('height_pixels', 0)
+            text = f"H: {h} px"
+        # วาดข้อความบนภาพ
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.7
+        thickness = 2
+        text_size, _ = cv2.getTextSize(text, font, font_scale, thickness)
+        text_x = x1
+        text_y = y1 - 10 if y1 - 10 > 20 else y1 + 20
+        cv2.rectangle(img, (text_x, text_y - text_size[1] - 4), (text_x + text_size[0] + 4, text_y + 4), (0, 255, 0), -1)
+        cv2.putText(img, text, (text_x + 2, text_y), font, font_scale, (0, 0, 0), thickness, cv2.LINE_AA)
+    return img 
