@@ -8,6 +8,8 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import logging
+from pymongo import MongoClient
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +21,11 @@ sys.path.append(str(Path(__file__).parent.parent / "model-yolov5s"))
 # Import local modules with aliases to avoid conflicts
 from config import AppConfig, ModelConfig, UIConfig, ErrorMessages
 from app_utils import ImageUtils, ValidationUtils, ErrorHandler, PerformanceUtils, BottleAnalyzer, ColorAnalyzer
+
+# --- MongoDB Connection ---
+client = MongoClient("mongodb+srv://s6404062636412:0606@pet.tacvdh9.mongodb.net/pet?retryWrites=true&w=majority&appName=pet")
+db = client["pet"]
+users = db["users"]
 
 # Custom CSS styles
 class Styles:
@@ -799,11 +806,52 @@ class PETDetectionApp:
         elif "ℹ️ About" in page:
             UIComponents.render_about_page()
 
+def login_page():
+    st.title("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        user = users.find_one({"username": username})
+        if user and check_password_hash(user['password'], password):
+            st.session_state["user"] = username
+            st.success("Login Success!")
+            st.rerun()
+        else:
+            st.error("Login Failed!")
+
+def register_page():
+    st.title("Register")
+    username = st.text_input("Username", key="reg_user")
+    password = st.text_input("Password", type="password", key="reg_pass")
+    if st.button("Register"):
+        if users.find_one({"username": username}):
+            st.error("Username already exists!")
+        else:
+            hashed_pw = generate_password_hash(password)
+            users.insert_one({"username": username, "password": hashed_pw})
+            st.success("Register Success! Please login.")
+
+def main_app():
+    app = PETDetectionApp()
+    app.run()
+    if st.sidebar.button("Logout"):
+        st.session_state.clear()
+        st.rerun()
+
+# --- Navigation ---
+if "user" not in st.session_state:
+    page = st.sidebar.selectbox("Menu", ["Login", "Register"])
+    if page == "Login":
+        login_page()
+    else:
+        register_page()
+else:
+    main_app()
+
 def main():
     """Main function to run the application."""
     try:
-        app = PETDetectionApp()
-        app.run()
+        main_app()
     except Exception as e:
         logger.error(f"Application error: {e}")
         st.error(f"{UIConfig.ICONS['error']} An unexpected error occurred. Please try again.")
