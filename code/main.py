@@ -11,6 +11,9 @@ import logging
 from pymongo import MongoClient
 from werkzeug.security import check_password_hash, generate_password_hash
 
+# Import ScoreManager
+from score_manager import ScoreManager
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +29,9 @@ from app_utils import ImageUtils, ValidationUtils, ErrorHandler, PerformanceUtil
 client = MongoClient("mongodb+srv://s6404062636412:0606@pet.tacvdh9.mongodb.net/pet?retryWrites=true&w=majority&appName=pet")
 db = client["pet"]
 users = db["users"]
+
+# Initialize ScoreManager
+score_manager = ScoreManager("mongodb+srv://s6404062636412:0606@pet.tacvdh9.mongodb.net/pet?retryWrites=true&w=majority&appName=pet")
 
 # Custom CSS styles
 class Styles:
@@ -286,7 +292,7 @@ class UIComponents:
             
             page = st.radio(
                 "📱 Navigation",
-                ["🏠 Home", "📸 Upload & Detect", "🔍 Advanced Analysis", "📊 Data Analysis", "ℹ️ About"],
+                ["🏠 Home", "📸 Upload & Detect", "🔍 Advanced Analysis", "📊 Data Analysis", "🏆 คะแนน", "ℹ️ About"],
                 index=0
             )
             
@@ -446,6 +452,20 @@ class UIComponents:
                     score, counts = ScoreCalculator.calculate_score(predictions, model_names)
                     st.info(f"คะแนนที่ได้: {score}")
                     st.write(f"ขวด: {counts['bottle']}, ฝา: {counts['cap']}, สลาก: {counts['label']}")
+                    
+                    # บันทึกคะแนนลงฐานข้อมูล
+                    if "user" in st.session_state:
+                        username = st.session_state["user"]
+                        image_info = {
+                            "filename": "uploaded_image",
+                            "size": image.size,
+                            "mode": image.mode
+                        }
+                        
+                        if score_manager.save_score(username, score, counts, image_info):
+                            st.success("✅ บันทึกคะแนนลงฐานข้อมูลสำเร็จ!")
+                        else:
+                            st.warning("⚠️ ไม่สามารถบันทึกคะแนนลงฐานข้อมูลได้")
                 else:
                     st.warning(f"{UIConfig.ICONS['warning']} {ErrorMessages.DETECTION_ERRORS['no_objects']}")
                     
@@ -584,6 +604,85 @@ class UIComponents:
         st.info(f"Version: {AppConfig.APP_VERSION}")
 
     @staticmethod
+    def render_score_page():
+        """Render the score page."""
+        st.markdown(f'<h1 class="sub-header">🏆 ระบบคะแนน</h1>', unsafe_allow_html=True)
+        
+        if "user" not in st.session_state:
+            st.warning("⚠️ กรุณาเข้าสู่ระบบเพื่อดูคะแนน")
+            return
+        
+        username = st.session_state["user"]
+        
+        # แสดงสถิติของผู้ใช้
+        st.subheader("📊 สถิติของคุณ")
+        user_stats = score_manager.get_user_stats(username)
+        
+        if user_stats:
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("คะแนนรวม", user_stats["total_score"])
+            with col2:
+                st.metric("จำนวนการตรวจจับ", user_stats["total_detections"])
+            with col3:
+                st.metric("คะแนนสูงสุด", user_stats["best_score"])
+            with col4:
+                st.metric("คะแนนเฉลี่ย", user_stats["average_score"])
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("ขวดทั้งหมด", user_stats["total_bottles"])
+            with col2:
+                st.metric("ฝาทั้งหมด", user_stats["total_caps"])
+            with col3:
+                st.metric("สลากทั้งหมด", user_stats["total_labels"])
+            
+            if user_stats["rank"]:
+                st.info(f"🏅 อันดับของคุณ: อันดับที่ {user_stats['rank']}")
+            else:
+                st.info("🏅 ยังไม่มีอันดับ")
+        else:
+            st.info("📝 ยังไม่มีข้อมูลคะแนน")
+        
+        # แสดงประวัติคะแนน
+        st.subheader("📈 ประวัติคะแนน")
+        history = score_manager.get_user_history(username, limit=10)
+        
+        if history:
+            for i, record in enumerate(history):
+                with st.expander(f"การตรวจจับ #{i+1} - คะแนน: {record['score']} - {record['timestamp'].strftime('%Y-%m-%d %H:%M')}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**คะแนน:** {record['score']}")
+                        st.write(f"**ขวด:** {record['counts']['bottle']}")
+                    with col2:
+                        st.write(f"**ฝา:** {record['counts']['cap']}")
+                        st.write(f"**สลาก:** {record['counts']['label']}")
+        else:
+            st.info("📝 ยังไม่มีประวัติคะแนน")
+        
+        # แสดงตารางคะแนนสูงสุด
+        st.subheader("🏆 ตารางคะแนนสูงสุด")
+        leaderboard = score_manager.get_leaderboard(limit=10)
+        
+        if leaderboard:
+            # สร้างตาราง
+            leaderboard_data = []
+            for i, user in enumerate(leaderboard):
+                leaderboard_data.append({
+                    "อันดับ": i + 1,
+                    "ผู้ใช้": user["username"],
+                    "คะแนนรวม": user["total_score"],
+                    "จำนวนการตรวจจับ": user["total_detections"],
+                    "คะแนนสูงสุด": user["best_score"]
+                })
+            
+            st.dataframe(leaderboard_data, use_container_width=True)
+        else:
+            st.info("📝 ยังไม่มีข้อมูลตารางคะแนน")
+
+    @staticmethod
     def render_advanced_analysis_page(confidence_threshold: float, reference_width: float):
         """Render the advanced bottle analysis page."""
         st.markdown(f'<h1 class="sub-header">{UIConfig.ICONS["detect"]} Advanced Bottle Analysis</h1>', unsafe_allow_html=True)
@@ -680,6 +779,21 @@ class UIComponents:
                     score, counts = ScoreCalculator.calculate_score(predictions, model_names)
                     st.info(f"คะแนนที่ได้: {score}")
                     st.write(f"ขวด: {counts['bottle']}, ฝา: {counts['cap']}, สลาก: {counts['label']}")
+                    
+                    # บันทึกคะแนนลงฐานข้อมูล
+                    if "user" in st.session_state:
+                        username = st.session_state["user"]
+                        image_info = {
+                            "filename": "advanced_analysis_image",
+                            "size": image.size,
+                            "mode": image.mode,
+                            "analysis_type": "advanced"
+                        }
+                        
+                        if score_manager.save_score(username, score, counts, image_info):
+                            st.success("✅ บันทึกคะแนนลงฐานข้อมูลสำเร็จ!")
+                        else:
+                            st.warning("⚠️ ไม่สามารถบันทึกคะแนนลงฐานข้อมูลได้")
                 else:
                     st.warning(f"{UIConfig.ICONS['warning']} {ErrorMessages.DETECTION_ERRORS['no_objects']}")
                     
@@ -803,6 +917,8 @@ class PETDetectionApp:
             UIComponents.render_advanced_analysis_page(confidence_threshold, reference_width)
         elif "📊 Data Analysis" in page:
             UIComponents.render_data_analysis_page()
+        elif "🏆 คะแนน" in page:
+            UIComponents.render_score_page()
         elif "ℹ️ About" in page:
             UIComponents.render_about_page()
 
