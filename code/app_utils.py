@@ -44,41 +44,20 @@ class ColorAnalyzer:
             return []
     
     @staticmethod
-    def is_transparent_bottle(image: np.ndarray, bbox: Tuple[int, int, int, int]) -> bool:
-        """Determine if a bottle is transparent based on color analysis."""
-        try:
-            x1, y1, x2, y2 = bbox
-            roi = image[y1:y2, x1:x2]
-            
-            # Convert to HSV for better color analysis
-            hsv = cv2.cvtColor(roi, cv2.COLOR_RGB2HSV)
-            
-            # Define transparent color ranges (low saturation, high value)
-            transparent_lower = np.array([0, 0, 200])  # Low saturation, high value
-            transparent_upper = np.array([180, 30, 255])
-            
-            # Create mask for transparent regions
-            transparent_mask = cv2.inRange(hsv, transparent_lower, transparent_upper)
-            
-            # Calculate percentage of transparent pixels
-            total_pixels = transparent_mask.shape[0] * transparent_mask.shape[1]
-            transparent_pixels = np.sum(transparent_mask > 0)
-            transparent_percentage = (transparent_pixels / total_pixels) * 100
-            
-            # Also check for low color variance (indicating transparency)
-            color_variance = np.var(roi, axis=(0, 1))
-            avg_variance = np.mean(color_variance)
-            
-            # Bottle is considered transparent if:
-            # 1. High percentage of transparent pixels (>40%)
-            # 2. Low color variance (<1000)
-            is_transparent = transparent_percentage > 40 and avg_variance < 1000
-            
-            return is_transparent, transparent_percentage, avg_variance
-            
-        except Exception as e:
-            logger.error(f"Error analyzing bottle transparency: {e}")
-            return False, 0, 0
+    def is_transparent_by_dominant_color(image: np.ndarray, bbox: Tuple[int, int, int, int]) -> bool:
+        """
+        Determine if a bottle is transparent by checking if the dominant color is in the white to dark gray range.
+        """
+        x1, y1, x2, y2 = bbox
+        roi = image[y1:y2, x1:x2]
+        dominant_colors = ColorAnalyzer.extract_dominant_colors(roi, n_colors=1)
+        if not dominant_colors:
+            return False
+        r, g, b = dominant_colors[0]
+        # ขวดใส: สีหลักอยู่ในช่วงขาวถึงเทาเข้ม (r,g,b > 100 ทุก channel)
+        if r > 100 and g > 100 and b > 100:
+            return True
+        return False
     
     @staticmethod
     def get_bottle_color(image: np.ndarray, bbox: Tuple[int, int, int, int]) -> Dict:
@@ -97,18 +76,18 @@ class ColorAnalyzer:
             main_color = dominant_colors[0]
             r, g, b = main_color
             
-            # Check if transparent
-            is_transparent, transparent_percentage, color_variance = ColorAnalyzer.is_transparent_bottle(image, bbox)
-            
             # Determine color name
             color_name = ColorAnalyzer._get_color_name(r, g, b)
+            
+            # ใช้ dominant color เป็นหลักในการตัดสินขวดใส
+            is_transparent = ColorAnalyzer.is_transparent_by_dominant_color(image, bbox)
             
             return {
                 "color_name": color_name,
                 "rgb": (r, g, b),
                 "is_transparent": is_transparent,
-                "transparent_percentage": transparent_percentage,
-                "color_variance": color_variance,
+                "transparent_percentage": 100.0 if is_transparent else 0.0,
+                "color_variance": 0.0,
                 "dominant_colors": dominant_colors
             }
             
