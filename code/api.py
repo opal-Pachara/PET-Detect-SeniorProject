@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from flask_cors import CORS
-from ultralytics import YOLO
+import torch
 from PIL import Image
 import numpy as np
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -13,8 +13,8 @@ CORS(app)
 app.config["MONGO_URI"] = "mongodb+srv://s6404062636412:0606@pet.tacvdh9.mongodb.net/pet?retryWrites=true&w=majority&appName=pet"
 mongo = PyMongo(app)
 
-# Load YOLO model once at startup
-model = YOLO("model-yolov5s/best.pt")  # Adjust path as needed
+# Load YOLOv5 model once at startup (use torch.hub)
+model = torch.hub.load('ultralytics/yolov5', 'custom', path='model-yolov5s/best.pt', force_reload=True)
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -52,24 +52,34 @@ def scan():
     image = Image.open(image_file.stream).convert("RGB")
     image_np = np.array(image)
 
-    # Run detection
-    results = model(image_np)
+    # Run detection (batch of 1 image)
+    if hasattr(model, '__call__'):
+        results = model([image_np])
+    else:
+        results = model.model([image_np])
+
+    # Get class names from model
+    if hasattr(model, 'names'):
+        class_names = model.names
+    elif hasattr(model, 'model') and hasattr(model.model, 'names'):
+        class_names = model.model.names
+    else:
+        class_names = {}
 
     # Count each class
     bottle_count = 0
     cap_count = 0
     label_count = 0
 
-    for r in results:
-        for box in r.boxes:
-            class_id = int(box.cls[0])
-            class_name = model.names[class_id].lower()
-            if class_name in ["bottle", "ขวด"]:
-                bottle_count += 1
-            elif class_name in ["cap", "ฝา"]:
-                cap_count += 1
-            elif class_name in ["label", "สลาก"]:
-                label_count += 1
+    for *box, conf, cls in results.xyxy[0].cpu().numpy():
+        class_id = int(cls)
+        class_name = class_names.get(class_id, str(class_id)).lower()
+        if class_name in ["bottle", "ขวด"]:
+            bottle_count += 1
+        elif class_name in ["cap", "ฝา"]:
+            cap_count += 1
+        elif class_name in ["label", "สลาก"]:
+            label_count += 1
 
     # Example: Calculate score (ปรับสูตรได้)
     score = (bottle_count * 50) - (cap_count * 10) - (label_count * 10)
