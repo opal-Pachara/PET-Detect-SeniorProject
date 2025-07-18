@@ -1,0 +1,8 @@
+*.pt
+*.db
+*.zip
+*.tar
+dataset/
+__pycache__/
+.DS_Store
+*.ipynb 
