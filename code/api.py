@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
+from ultralytics import YOLO
+from PIL import Image
+import numpy as np
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 CORS(app)
@@ -9,6 +12,9 @@ CORS(app)
 # MongoDB Atlas config (ใช้แบบเดียวกับ db.py)
 app.config["MONGO_URI"] = "mongodb+srv://s6404062636412:0606@pet.tacvdh9.mongodb.net/pet?retryWrites=true&w=majority&appName=pet"
 mongo = PyMongo(app)
+
+# Load YOLO model once at startup
+model = YOLO("model-yolov5s/best.pt")  # Adjust path as needed
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -38,26 +44,51 @@ def login():
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
-    # รับไฟล์ภาพจาก frontend (multipart/form-data)
     if 'image' not in request.files:
         return jsonify({'success': False, 'message': 'No image uploaded'}), 400
-    image = request.files['image']
-    # TODO: นำภาพไปตรวจจับด้วยโมเดล (mockup ตอบกลับผลลัพธ์ตัวอย่าง)
-    # สามารถต่อยอดให้เรียก YOLOv5 ได้ภายหลัง
+    image_file = request.files['image']
+
+    # Convert image to numpy array
+    image = Image.open(image_file.stream).convert("RGB")
+    image_np = np.array(image)
+
+    # Run detection
+    results = model(image_np)
+
+    # Count each class
+    bottle_count = 0
+    cap_count = 0
+    label_count = 0
+
+    for r in results:
+        for box in r.boxes:
+            class_id = int(box.cls[0])
+            class_name = model.names[class_id].lower()
+            if class_name in ["bottle", "ขวด"]:
+                bottle_count += 1
+            elif class_name in ["cap", "ฝา"]:
+                cap_count += 1
+            elif class_name in ["label", "สลาก"]:
+                label_count += 1
+
+    # Example: Calculate score (ปรับสูตรได้)
+    score = (bottle_count * 50) - (cap_count * 10) - (label_count * 10)
+    score = max(0, score)
+
     return jsonify({
         'success': True,
-        'message': 'Scan completed (mockup)',
+        'message': 'Scan completed',
         'result': {
-            'bottle_detected': True,
-            'score': 85,
-            'details': 'This is a mockup result.'
+            'bottle_count': bottle_count,
+            'cap_count': cap_count,
+            'label_count': label_count,
+            'score': score
         }
     })
 
 @app.route('/api/ping', methods=['GET'])
 def ping():
     try:
-        # ลองนับจำนวน user ใน collection (หรือจะใช้ mongo.cx.server_info() ก็ได้)
         mongo.db.users.count_documents({})  # type: ignore
         return jsonify({'success': True, 'message': 'MongoDB connected'})
     except Exception as e:
