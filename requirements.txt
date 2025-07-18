@@ -1,4 +1,5 @@
 flask
+flask_pymongo
 ultralytics>=8.0.0
 # ติดตั้ง torch/torchvision แบบ CPU-only ใน Dockerfile แทนการใส่ตรงนี้
 opencv-python-headless>=4.8.0
