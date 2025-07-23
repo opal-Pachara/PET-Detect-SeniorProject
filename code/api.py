@@ -1,10 +1,11 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from flask_cors import CORS
-import torch
+# import torch  # ไม่ใช้ torch.hub แล้ว
 from PIL import Image
 import numpy as np
 from werkzeug.security import generate_password_hash, check_password_hash
+from ultralytics import YOLO  # เพิ่มบรรทัดนี้
 
 app = Flask(__name__)
 CORS(app)
@@ -13,8 +14,8 @@ CORS(app)
 app.config["MONGO_URI"] = "mongodb+srv://s6404062636412:0606@pet.tacvdh9.mongodb.net/pet?retryWrites=true&w=majority&appName=pet"
 mongo = PyMongo(app)
 
-# Load YOLOv5 model once at startup (use torch.hub)
-model = torch.hub.load('ultralytics/yolov5', 'custom', path='model-yolov5s/best.pt', force_reload=True)
+# Load YOLOv11n model once at startup (use ultralytics)
+model = YOLO('model-yolov5s/best.pt')
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -52,27 +53,21 @@ def scan():
     image = Image.open(image_file.stream).convert("RGB")
     image_np = np.array(image)
 
-    # Run detection (batch of 1 image)
-    if hasattr(model, '__call__'):
-        results = model([image_np])
-    else:
-        results = model.model([image_np])
+    # Run detection (ultralytics YOLO)
+    results = model(image_np)
+    result = results[0]  # ultralytics v8+ ผลลัพธ์เป็น list
 
     # Get class names from model
-    if hasattr(model, 'names'):
-        class_names = model.names
-    elif hasattr(model, 'model') and hasattr(model.model, 'names'):
-        class_names = model.model.names
-    else:
-        class_names = {}
+    class_names = model.names if hasattr(model, 'names') else {}
 
     # Count each class
     bottle_count = 0
     cap_count = 0
     label_count = 0
 
-    for *box, conf, cls in results.xyxy[0].cpu().numpy():
-        class_id = int(cls)
+    # วนลูปผ่าน result.boxes (ultralytics YOLOv8+)
+    for box in result.boxes:
+        class_id = int(box.cls[0].item()) if hasattr(box.cls[0], 'item') else int(box.cls[0])
         class_name = class_names.get(class_id, str(class_id)).lower()
         if class_name in ["bottle", "ขวด"]:
             bottle_count += 1
