@@ -53,10 +53,10 @@ def capture_and_send():
     try:
         result = response.json()
         print("📊 Response:")
-        print(f"   - ขวด: {result.get('bottle', 0)}")
-        print(f"   - ฝา: {result.get('cap', 0)}")
-        print(f"   - สลาก: {result.get('label', 0)}")
-        print(f"   - คะแนน: {result.get('score', 0)}")
+        print(f"   - ขวด: {result.get('result', {}).get('bottle_count', 0)}")
+        print(f"   - ฝา: {result.get('result', {}).get('cap_count', 0)}")
+        print(f"   - สลาก: {result.get('result', {}).get('label_count', 0)}")
+        print(f"   - คะแนน: {result.get('result', {}).get('score', 0)}")
         return True
     except Exception as e:
         print(f"❌ Response error: {response.text}")
