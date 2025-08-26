@@ -35,14 +35,28 @@ class PETDetectClientWithStepper:
         Initialize PET Detect Client with Stepper Motor Control
         """
         self.api_url = api_url.rstrip('/')
-        self.rfid_reader = SimpleMFRC522()
+        
+        # Initialize RFID first
+        try:
+            self.rfid_reader = SimpleMFRC522()
+            logger.info("RFID reader initialized successfully")
+        except Exception as e:
+            logger.error(f"RFID initialization failed: {e}")
+            self.rfid_reader = None
+        
         self.camera = None
+        
         # Initialize Stepper Motor (ไม่ใช้ ENA pin)
-        self.stepper = StepperMotorController(
-            step_pin=18,    # PUL+ → GPIO 18 (Pin 12)
-            dir_pin=19,     # DIR+ → GPIO 19 (Pin 35)  
-            enable_pin=None # ENA+ → ไม่ต้องต่อ (มอเตอร์เปิดใช้งานอยู่เสมอ)
-        )
+        try:
+            self.stepper = StepperMotorController(
+                step_pin=18,    # PUL+ → GPIO 18 (Pin 12)
+                dir_pin=19,     # DIR+ → GPIO 19 (Pin 35)  
+                enable_pin=None # ENA+ → ไม่ต้องต่อ (มอเตอร์เปิดใช้งานอยู่เสมอ)
+            )
+            logger.info("Stepper motor initialized successfully")
+        except Exception as e:
+            logger.error(f"Stepper motor initialization failed: {e}")
+            self.stepper = None
         self.session = requests.Session()
         self.session.timeout = 5
         
@@ -187,6 +201,10 @@ class PETDetectClientWithStepper:
     
     def read_rfid_with_timeout(self, timeout=30):
         """อ่าน RFID card พร้อม timeout"""
+        if not self.rfid_reader:
+            print("❌ RFID reader not initialized")
+            return None, None
+            
         print(f"🔍 รอการสแกน RFID card (timeout: {timeout} วินาที)...")
         print("📱 วางบัตร RFID ใกล้ตัวอ่าน...")
         logger.info(f"Waiting for RFID card (timeout: {timeout}s)...")
@@ -203,16 +221,26 @@ class PETDetectClientWithStepper:
                 # วิธีที่ 1: read_no_block
                 try:
                     card_id, text = self.rfid_reader.read_no_block()
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"read_no_block failed: {e}")
                 
                 # วิธีที่ 2: read_id_no_block (ถ้าวิธีแรกไม่ได้)
                 if not card_id:
                     try:
                         card_id = self.rfid_reader.read_id_no_block()
                         text = ""
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"read_id_no_block failed: {e}")
+                
+                # วิธีที่ 3: ใช้ read แบบปกติ (แต่ non-blocking)
+                if not card_id:
+                    try:
+                        # สร้าง RFID reader ใหม่ชั่วคราว
+                        temp_reader = SimpleMFRC522()
+                        card_id, text = temp_reader.read_no_block()
+                        logger.debug("Temporary reader worked")
+                    except Exception as e:
+                        logger.debug(f"Temporary reader failed: {e}")
                 
                 if card_id:
                     print(f"✅ RFID detected - ID: {card_id}")
@@ -230,7 +258,7 @@ class PETDetectClientWithStepper:
             except Exception as e:
                 logger.debug(f"RFID read attempt failed: {e}")
             
-            time.sleep(0.2)  # ลด delay ลงเล็กน้อย
+            time.sleep(0.3)  # เพิ่ม delay เล็กน้อย
         
         print("❌ RFID timeout - ไม่พบบัตร")
         print("🔧 แนะนำการแก้ปัญหา:")
