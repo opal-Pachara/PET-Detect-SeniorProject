@@ -1,6 +1,9 @@
 """
-Improved Raspberry Pi Client - เปิดกล้องเฉพาะเมื่อสแกน RFID
-กล้องจะทำงานเฉพาะเมื่อตรวจพบบัตร และปิดหลังจากใช้งานเสร็จ
+PET Detect Client with Stepper Motor (Micro Step)
+ใช้ Stepper Motor แทน DC Motor เพื่อความแม่นยำสูง
+- ขวด (Bottle) → หมุนซ้าย 90°
+- กระป๋อง (Can) → หมุนขวา 90°
+- หมุนกลับตำแหน่งเดิมหลังเสร็จ
 """
 
 import requests
@@ -13,6 +16,7 @@ from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
 from datetime import datetime
 import logging
+from stepper_motor_controller import StepperMotorController
 
 # Setup logging
 logging.basicConfig(
@@ -25,22 +29,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class PETDetectClientImproved:
+class PETDetectClientWithStepper:
     def __init__(self, api_url="http://192.168.1.31:5000"):
         """
-        Initialize PET Detect Client - Improved Version
-        กล้องจะเปิดเฉพาะเมื่อต้องการใช้งาน
+        Initialize PET Detect Client with Stepper Motor Control
         """
         self.api_url = api_url.rstrip('/')
         self.rfid_reader = SimpleMFRC522()
-        self.camera = None  # จะเปิดเฉพาะเมื่อต้องการ
+        self.camera = None
+        # Initialize Stepper Motor (ไม่ใช้ ENA pin)
+        self.stepper = StepperMotorController(
+            step_pin=20,    # PUL+ → GPIO 20
+            dir_pin=21,     # DIR+ → GPIO 21  
+            enable_pin=None # ENA+ → ไม่ต้องต่อ (มอเตอร์เปิดใช้งานอยู่เสมอ)
+        )
         self.session = requests.Session()
-        self.session.timeout = 5  # ลด timeout เหลือ 5 วินาที
+        self.session.timeout = 5
         
-        logger.info(f"PET Detect Client (Improved) initialized")
+        logger.info(f"PET Detect Client with Stepper Motor initialized")
         logger.info(f"API URL: {self.api_url}")
-        logger.info(f"Camera: On-demand (จะเปิดเฉพาะเมื่อใช้งาน)")
-        
+        logger.info(f"Stepper Control: LEFT 90° (Bottle), RIGHT 90° (Can)")
+    
     def test_api_connection(self):
         """ทดสอบการเชื่อมต่อกับ API"""
         try:
@@ -59,17 +68,11 @@ class PETDetectClientImproved:
                 return False
         except requests.exceptions.Timeout:
             print("API connection timeout (5 วินาที)")
-            print("กรุณาตรวจสอบ:")
-            print("1. API บนเครื่อง Windows รันอยู่หรือไม่")
-            print("2. IP address ถูกต้องหรือไม่")
-            print("3. Windows Firewall ปิดการเชื่อมต่อหรือไม่")
+            print("กรุณาตรวจสอบ API บนเครื่อง Windows")
             return False
         except requests.exceptions.ConnectionError:
             print("ไม่สามารถเชื่อมต่อไปยัง API ได้")
-            print("กรุณาตรวจสอบ:")
-            print("1. IP address: 192.168.1.31")
-            print("2. API รันอยู่บน Windows หรือไม่")
-            print("3. อยู่ network เดียวกันหรือไม่")
+            print("กรุณาตรวจสอบ IP address และ network")
             return False
         except Exception as e:
             logger.error(f"API connection failed: {e}")
@@ -87,7 +90,6 @@ class PETDetectClientImproved:
             if not self.camera.isOpened():
                 raise Exception("Cannot open camera")
             
-            # ตั้งค่า resolution
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             
@@ -129,12 +131,10 @@ class PETDetectClientImproved:
             return None
             
         try:
-            # ลองถ่ายหลายครั้งเพื่อให้แน่ใจ
             for attempt in range(max_attempts):
                 ret, frame = self.camera.read()
                 
                 if ret and frame is not None:
-                    # บันทึกรูปถ้าระบุ path
                     if save_path:
                         cv2.imwrite(save_path, frame)
                         logger.info(f"Image saved: {save_path}")
@@ -155,7 +155,6 @@ class PETDetectClientImproved:
     def send_image_to_api(self, image_data, image_path=None):
         """ส่งรูปภาพไปยัง API สำหรับวิเคราะห์"""
         try:
-            # ถ้าเป็น numpy array ให้แปลงเป็น image file
             if image_path is None:
                 temp_path = f"temp_image_{int(time.time())}.jpg"
                 cv2.imwrite(temp_path, image_data)
@@ -164,7 +163,6 @@ class PETDetectClientImproved:
             else:
                 delete_temp = False
             
-            # เปิดไฟล์และส่งไป API
             with open(image_path, 'rb') as image_file:
                 files = {'image': image_file}
                 response = self.session.post(
@@ -172,7 +170,6 @@ class PETDetectClientImproved:
                     files=files
                 )
             
-            # ลบไฟล์ชั่วคราว
             if delete_temp and os.path.exists(image_path):
                 os.remove(image_path)
             
@@ -207,6 +204,56 @@ class PETDetectClientImproved:
         logger.warning("RFID read timeout")
         return None, None
     
+    def control_stepper_by_detection(self, result_data):
+        """ควบคุม Stepper Motor ตามผลการตรวจจับ และหมุนกลับมาที่เดิม"""
+        if not result_data or not result_data.get('success'):
+            logger.warning("No valid detection result for stepper control")
+            return
+        
+        result = result_data.get('result', {})
+        bottle_count = result.get('bottle_count', 0)
+        can_count = result.get('can_count', 0)
+        
+        print("\nการควบคุม Stepper Motor:")
+        print("="*35)
+        print(f"📐 ตำแหน่งปัจจุบัน: {self.stepper.get_position_degrees()}°")
+        
+        if bottle_count > 0 and can_count > 0:
+            # มีทั้งขวดและกระป๋อง - ให้ความสำคัญกับกระป๋อง (คะแนนสูงกว่า)
+            print(f"พบทั้งขวด ({bottle_count}) และกระป๋อง ({can_count})")
+            print("เลือกหมุนขวา 120° (กระป๋อง - คะแนนสูงกว่า)")
+            self.stepper.rotate_right(120, speed=1000)
+            
+        elif bottle_count > 0:
+            # พบขวดเท่านั้น
+            print(f"พบขวด ({bottle_count} อัน)")
+            print("หมุนซ้าย 90°")
+            self.stepper.rotate_left(90, speed=1000)
+            
+        elif can_count > 0:
+            # พบกระป๋องเท่านั้น
+            print(f"พบกระป๋อง ({can_count} อัน)")
+            print("หมุนขวา 90°")
+            self.stepper.rotate_right(90, speed=1000)
+            
+        else:
+            # ไม่พบอะไร
+            print("ไม่พบขวดหรือกระป๋อง")
+            print("ไม่หมุน Stepper Motor")
+            print("="*35)
+            return
+        
+        # รอสักครู่แล้วหมุนกลับ
+        print("รอ 2 วินาที...")
+        time.sleep(2)
+        
+        print("หมุนกลับตำแหน่งเริ่มต้น...")
+        self.stepper.return_to_home(speed=1200)
+        
+        print(f"📐 ตำแหน่งสุดท้าย: {self.stepper.get_position_degrees()}°")
+        print("การควบคุม Stepper Motor เสร็จสิ้น")
+        print("="*35)
+    
     def process_scan_result(self, result_data):
         """ประมวลผลและแสดงผลลัพธ์"""
         if not result_data or not result_data.get('success'):
@@ -227,6 +274,9 @@ class PETDetectClientImproved:
         print(f"ตรวจพบทั้งหมด: {result.get('total_detections', 0)} รายการ")
         print("="*50)
         
+        # ควบคุม Stepper Motor ตามผลการตรวจจับ
+        self.control_stepper_by_detection(result_data)
+        
         # บันทึกผลลัพธ์
         self.save_result(result)
         return True
@@ -237,7 +287,8 @@ class PETDetectClientImproved:
             timestamp = datetime.now().isoformat()
             log_entry = {
                 'timestamp': timestamp,
-                'result': result
+                'result': result,
+                'stepper_position': self.stepper.get_position_degrees()
             }
             
             log_file = 'scan_results.json'
@@ -257,10 +308,10 @@ class PETDetectClientImproved:
         except Exception as e:
             logger.error(f"Failed to save result: {e}")
     
-    def run_improved_scan_system(self):
-        """รันระบบแบบปรับปรุง: RFID → Camera → API → Result"""
-        logger.info("Starting improved scan system...")
-        logger.info("Flow: RFID → Open Camera → Capture → API → Close Camera")
+    def run_stepper_scan_system(self):
+        """รันระบบแบบมี Stepper Motor: RFID → Camera → API → Stepper Control"""
+        logger.info("Starting PET Detect with Stepper Motor Control...")
+        logger.info("Flow: RFID → Camera → API → Stepper → Result")
         logger.info("Press Ctrl+C to stop")
         
         try:
@@ -281,7 +332,6 @@ class PETDetectClientImproved:
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                             image_path = f"captured_images/scan_{timestamp}.jpg"
                             
-                            # สร้างโฟลเดอร์ถ้าไม่มี
                             os.makedirs("captured_images", exist_ok=True)
                             
                             image = self.capture_image_quick(save_path=image_path)
@@ -291,7 +341,7 @@ class PETDetectClientImproved:
                                 print("กำลังวิเคราะห์ด้วย AI...")
                                 result = self.send_image_to_api(image, image_path)
                                 
-                                # ขั้นตอน 5: แสดงผลลัพธ์
+                                # ขั้นตอน 5: แสดงผลลัพธ์และควบคุม Stepper
                                 self.process_scan_result(result)
                             else:
                                 print("การถ่ายรูปล้มเหลว")
@@ -304,16 +354,16 @@ class PETDetectClientImproved:
                         print("ไม่สามารถเปิดกล้องได้")
                     
                     # รอก่อนรอบถัดไป
-                    print("\nรอ 3 วินาทีก่อนรอบถัดไป...")
-                    time.sleep(3)
+                    print("\nรอ 5 วินาทีก่อนรอบถัดไป...")
+                    time.sleep(5)
                     
                 else:
                     print("ไม่พบ RFID card ภายในเวลาที่กำหนด")
                     
         except KeyboardInterrupt:
-            logger.info("\nStopping improved scan system...")
+            logger.info("\nStopping stepper scan system...")
         except Exception as e:
-            logger.error(f"Error in improved scan system: {e}")
+            logger.error(f"Error in stepper scan system: {e}")
         finally:
             self.cleanup()
     
@@ -321,6 +371,7 @@ class PETDetectClientImproved:
         """ปิดการใช้งาน resources"""
         try:
             self.close_camera()
+            self.stepper.cleanup()
             GPIO.cleanup()
             logger.info("System cleanup completed")
             
@@ -328,18 +379,17 @@ class PETDetectClientImproved:
             logger.error(f"Cleanup error: {e}")
 
 def main():
-    # ใส่ URL ของ API server ที่นี่
-    API_URL = "http://192.168.1.31:5000"  # หรือ IP ของเครื่องที่รัน API
+    API_URL = "http://192.168.1.31:5000"
     
-    client = PETDetectClientImproved(api_url=API_URL)
+    client = PETDetectClientWithStepper(api_url=API_URL)
     
     # ทดสอบการเชื่อมต่อ API
     if not client.test_api_connection():
         print("ไม่สามารถเชื่อมต่อกับ API ได้")
         return
     
-    # เริ่มการทำงานแบบปรับปรุง
-    client.run_improved_scan_system()
+    # เริ่มการทำงานระบบที่มี Stepper Motor
+    client.run_stepper_scan_system()
 
 if __name__ == "__main__":
     main()
