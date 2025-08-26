@@ -12,9 +12,9 @@ GND     → GND (บน Driver)
 
 Raspberry Pi → Driver:
 ----------------------  
-GPIO 20 → PUL+ (Pulse Signal)
-GPIO 21 → DIR+ (Direction Signal)
-GND     → PUL-, DIR- (Signal Ground เท่านั้น)
+GPIO 18 → PUL+ (Pulse Signal) - Pin 12
+GPIO 19 → DIR+ (Direction Signal) - Pin 35
+GND     → PUL-, DIR- (Signal Ground) - Pin 14/39
 
 Driver → Stepper Motor:
 -----------------------

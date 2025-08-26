@@ -15,8 +15,8 @@ def test_professional_driver():
     try:
         # สร้าง controller (ไม่ใช้ ENA pin)
         stepper = StepperMotorController(
-            step_pin=20,    # PUL+ → GPIO 20
-            dir_pin=21,     # DIR+ → GPIO 21
+            step_pin=18,    # PUL+ → GPIO 18 (Pin 12)
+            dir_pin=19,     # DIR+ → GPIO 19 (Pin 35)
             enable_pin=None # ENA+ → ไม่ต้องต่อ
         )
         
