@@ -1,0 +1,16 @@
+# Minimal requirements สำหรับ API + AI Model เท่านั้น
+# ไม่รวม web interface, database, authentication
+
+# Core API Framework
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# AI/ML Dependencies
+ultralytics>=8.0.0
+opencv-python-headless>=4.8.0
+Pillow>=9.5.0
+numpy>=1.24.0,<2.0.0
+
+# Optional: สำหรับ production deployment
+# gunicorn>=20.1.0
+# gevent>=22.10.0

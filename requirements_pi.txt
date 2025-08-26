@@ -1,0 +1,18 @@
+# Requirements สำหรับ Raspberry Pi Client
+# ติดตั้งบน Raspberry Pi เท่านั้น
+
+# HTTP Client
+requests>=2.28.0
+
+# Computer Vision
+opencv-python>=4.8.0
+
+# RFID Reader
+mfrc522
+
+# GPIO Control  
+RPi.GPIO
+
+# Optional: ถ้าต้องการประมวลผลรูปภาพเพิ่มเติม
+# Pillow>=9.5.0
+# numpy>=1.24.0
