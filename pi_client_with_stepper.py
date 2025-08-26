@@ -187,20 +187,57 @@ class PETDetectClientWithStepper:
     
     def read_rfid_with_timeout(self, timeout=30):
         """อ่าน RFID card พร้อม timeout"""
+        print(f"🔍 รอการสแกน RFID card (timeout: {timeout} วินาที)...")
+        print("📱 วางบัตร RFID ใกล้ตัวอ่าน...")
         logger.info(f"Waiting for RFID card (timeout: {timeout}s)...")
         
         start_time = time.time()
+        last_status_time = start_time
+        
         while time.time() - start_time < timeout:
             try:
-                card_id, text = self.rfid_reader.read_no_block()
+                # ลองหลายวิธี RFID reading
+                card_id = None
+                text = ""
+                
+                # วิธีที่ 1: read_no_block
+                try:
+                    card_id, text = self.rfid_reader.read_no_block()
+                except:
+                    pass
+                
+                # วิธีที่ 2: read_id_no_block (ถ้าวิธีแรกไม่ได้)
+                if not card_id:
+                    try:
+                        card_id = self.rfid_reader.read_id_no_block()
+                        text = ""
+                    except:
+                        pass
+                
                 if card_id:
+                    print(f"✅ RFID detected - ID: {card_id}")
                     logger.info(f"RFID detected - ID: {card_id}")
                     return card_id, text
+                
+                # แสดงสถานะทุก 5 วินาที
+                current_time = time.time()
+                if current_time - last_status_time >= 5:
+                    elapsed = int(current_time - start_time)
+                    remaining = timeout - elapsed
+                    print(f"⏳ รอ RFID... เหลือ {remaining} วินาที")
+                    last_status_time = current_time
+                
             except Exception as e:
                 logger.debug(f"RFID read attempt failed: {e}")
             
-            time.sleep(0.1)
+            time.sleep(0.2)  # ลด delay ลงเล็กน้อย
         
+        print("❌ RFID timeout - ไม่พบบัตร")
+        print("🔧 แนะนำการแก้ปัญหา:")
+        print("   1. ตรวจสอบการต่อสาย RFID")
+        print("   2. วางบัตรใกล้ตัวอ่านมากขึ้น")
+        print("   3. ลองใช้บัตร RFID อื่น")
+        print("   4. รัน: python test_rfid_connection.py")
         logger.warning("RFID read timeout")
         return None, None
     
