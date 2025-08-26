@@ -166,6 +166,7 @@ class PETDetectClient:
         print("🎯 การวิเคราะห์เสร็จสิ้น")
         print("="*50)
         print(f"🍶 ขวด (Bottles): {result.get('bottle_count', 0)}")
+        print(f"🥫 กระป๋อง (Cans): {result.get('can_count', 0)}")
         print(f"🧢 ฝา (Caps): {result.get('cap_count', 0)}")
         print(f"🏷️  สลาก (Labels): {result.get('label_count', 0)}")
         print(f"📊 คะแนนรวม: {result.get('score', 0)}")

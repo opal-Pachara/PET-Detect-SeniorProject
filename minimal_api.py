@@ -93,6 +93,7 @@ def scan():
         bottle_count = 0
         cap_count = 0
         label_count = 0
+        can_count = 0  # เพิ่มการนับกระป๋อง
         total_detections = 0
 
         if result.boxes is not None:
@@ -108,11 +109,13 @@ def scan():
                     cap_count += 1
                 elif class_name in ["label", "สลาก"]:
                     label_count += 1
+                elif class_name in ["can", "กระป๋อง"]:  # เพิ่มการตรวจจับกระป๋อง
+                    can_count += 1
 
         # คำนวณคะแนน
-        score = calculate_score(bottle_count, cap_count, label_count)
+        score = calculate_score(bottle_count, cap_count, label_count, can_count)
         
-        logger.info(f"🎯 Detection results - Bottles: {bottle_count}, Caps: {cap_count}, Labels: {label_count}, Score: {score}")
+        logger.info(f"🎯 Detection results - Bottles: {bottle_count}, Caps: {cap_count}, Labels: {label_count}, Cans: {can_count}, Score: {score}")
 
         return jsonify({
             'success': True,
@@ -121,6 +124,7 @@ def scan():
                 'bottle_count': bottle_count,
                 'cap_count': cap_count,
                 'label_count': label_count,
+                'can_count': can_count,  # เพิ่มจำนวนกระป๋อง
                 'total_detections': total_detections,
                 'score': score,
                 'image_size': f"{image.size[0]}x{image.size[1]}"
@@ -191,13 +195,15 @@ def model_info():
             'message': f'Error getting model info: {str(e)}'
         }), 500
 
-def calculate_score(bottle_count, cap_count, label_count):
+def calculate_score(bottle_count, cap_count, label_count, can_count):
     """
     คำนวณคะแนนจากจำนวนที่ตรวจพบ
-    สามารถปรับสูตรได้ตามต้องการ
+    - ขวด (bottle): 50 คะแนน
+    - กระป๋อง (can): 100 คะแนน  
+    - ฝา (cap): -10 คะแนน
+    - สลาก (label): -10 คะแนน
     """
-    # สูตรตัวอย่าง: ขวดได้คะแนน, ฝาและสลากหักคะแนน
-    score = (bottle_count * 50) - (cap_count * 10) - (label_count * 10)
+    score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
     return max(0, score)  # คะแนนไม่ติดลบ
 
 @app.errorhandler(404)
