@@ -43,7 +43,11 @@ class StepperMotorController:
     
     def setup_gpio(self):
         """ตั้งค่า GPIO pins"""
-        GPIO.setmode(GPIO.BCM)
+        try:
+            GPIO.setmode(GPIO.BCM)
+        except ValueError:
+            # GPIO mode already set, just continue
+            logger.info("GPIO mode already set, continuing...")
         
         # Output pins สำหรับ Professional Driver
         pins = [self.step_pin, self.dir_pin]
@@ -51,8 +55,11 @@ class StepperMotorController:
             pins.append(self.enable_pin)
         
         for pin in pins:
-            GPIO.setup(pin, GPIO.OUT)
-            GPIO.output(pin, GPIO.LOW)
+            try:
+                GPIO.setup(pin, GPIO.OUT)
+                GPIO.output(pin, GPIO.LOW)
+            except RuntimeError as e:
+                logger.warning(f"GPIO pin {pin} setup warning: {e}")
         
         enable_status = "with Enable pin" if self.enable_pin else "without Enable pin"
         logger.info(f"GPIO pins configured for professional driver ({enable_status})")
