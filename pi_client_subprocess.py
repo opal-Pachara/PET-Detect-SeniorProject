@@ -206,8 +206,8 @@ if __name__ == "__main__":
             print(f"❌ API request failed: {e}")
             return None
     
-    def process_scan_result(self, result_data):
-        """แสดงผลการวิเคราะห์"""
+    def process_scan_result(self, result_data, card_id=None):
+        """แสดงผลการวิเคราะห์และบันทึกคะแนน"""
         if not result_data or not result_data.get('success'):
             print("❌ ไม่ได้รับผลการวิเคราะห์")
             return
@@ -223,6 +223,40 @@ if __name__ == "__main__":
         print(f"จำนวนรวม: {result.get('total_detections', 0)}")
         print(f"คะแนน: {result.get('score', 0)}")
         print("=" * 40)
+        
+        # บันทึกคะแนนไปยังเว็บ (ถ้ามี card_id)
+        if card_id:
+            self.save_score_to_web(card_id, result)
+    
+    def save_score_to_web(self, card_id, result):
+        """บันทึกคะแนนไปยังเว็บ database"""
+        try:
+            score_data = {
+                'card_id': str(card_id),
+                'bottle_count': result.get('bottle_count', 0),
+                'can_count': result.get('can_count', 0),
+                'cap_count': result.get('cap_count', 0),
+                'label_count': result.get('label_count', 0),
+                'score': result.get('score', 0),
+                'image_path': 'captured_image.jpg'
+            }
+            
+            # ส่งไปยัง Web Score API (รันบนเครื่องเดียวกัน)
+            web_response = self.session.post(
+                'http://localhost:8000/api/add_score',
+                json=score_data,
+                timeout=5
+            )
+            
+            if web_response.status_code == 200:
+                print("💾 บันทึกคะแนนลงเว็บสำเร็จ")
+                logger.info(f"Score saved to web: Card {card_id}, Score {result.get('score', 0)}")
+            else:
+                print(f"⚠️ ไม่สามารถบันทึกคะแนนลงเว็บได้: {web_response.status_code}")
+                
+        except Exception as e:
+            print(f"⚠️ Web score save error: {e}")
+            logger.debug(f"Web score save failed: {e}")
     
     def control_stepper(self, result_data):
         """ควบคุม Stepper Motor"""
@@ -300,11 +334,11 @@ if __name__ == "__main__":
         if not result:
             return False
         
-        # 4. แสดงผล
-        self.process_scan_result(result)
-        
-        # 5. ควบคุม motor
-        self.control_stepper(result)
+                        # 4. แสดงผลและบันทึกคะแนน
+                self.process_scan_result(result, card_id)
+                
+                # 5. ควบคุม motor
+                self.control_stepper(result)
         
         print("✅ การสแกนเสร็จสิ้น!")
         return True

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PET Detect - ตารางคะแนน RFID</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .header h1 {
+            color: #4a5568;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        th {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        tr:hover {
+            background-color: #f7fafc;
+        }
+        .rank {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .rank-1 { color: #ffd700; }
+        .rank-2 { color: #c0c0c0; }
+        .rank-3 { color: #cd7f32; }
+        .score {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #2d3748;
+        }
+        .card-id {
+            font-family: monospace;
+            background: #edf2f7;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #4a5568;
+        }
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0,0,0,0.3);
+        }
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 PET Detect Score Board</h1>
+            <p>ตารางคะแนนการสแกน RFID</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ cards|length }}</div>
+                <div class="stat-label">จำนวนบัตรทั้งหมด</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ cards|sum(attribute='scan_count') or 0 }}</div>
+                <div class="stat-label">การสแกนทั้งหมด</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ cards|sum(attribute='total_score') or 0 }}</div>
+                <div class="stat-label">คะแนนรวมทั้งหมด</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ cards|max(attribute='total_score')|int if cards else 0 }}</div>
+                <div class="stat-label">คะแนนสูงสุด</div>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            {% if cards %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>อันดับ</th>
+                        <th>Card ID</th>
+                        <th>ชื่อบัตร</th>
+                        <th>คะแนนรวม</th>
+                        <th>จำนวนการสแกน</th>
+                        <th>สแกนครั้งแรก</th>
+                        <th>สแกนล่าสุด</th>
+                        <th>รายละเอียด</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for card in cards %}
+                    <tr>
+                        <td class="rank rank-{{ loop.index if loop.index <= 3 else 'other' }}">
+                            #{{ loop.index }}
+                        </td>
+                        <td class="card-id">{{ card.card_id[:12] }}...</td>
+                        <td>{{ card.card_name }}</td>
+                        <td class="score">{{ card.total_score }}</td>
+                        <td>{{ card.scan_count }}</td>
+                        <td>{{ card.first_scan[:16] if card.first_scan else '-' }}</td>
+                        <td>{{ card.last_scan[:16] if card.last_scan else '-' }}</td>
+                        <td>
+                            <a href="/card/{{ card.card_id }}" style="color: #667eea; text-decoration: none;">
+                                ดูรายละเอียด →
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">
+                <h3>ยังไม่มีข้อมูลบัตร RFID</h3>
+                <p>เริ่มใช้งานระบบ PET Detect เพื่อสะสมคะแนน</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <button class="refresh-btn" onclick="window.location.reload()">
+        🔄 รีเฟรช
+    </button>
+    
+    <script>
+        // Auto refresh ทุก 30 วินาที
+        setInterval(() => {
+            window.location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>
