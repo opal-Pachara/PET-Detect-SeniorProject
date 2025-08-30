@@ -334,11 +334,11 @@ if __name__ == "__main__":
         if not result:
             return False
         
-                        # 4. แสดงผลและบันทึกคะแนน
-                self.process_scan_result(result, card_id)
-                
-                # 5. ควบคุม motor
-                self.control_stepper(result)
+        # 4. แสดงผลและบันทึกคะแนน
+        self.process_scan_result(result, card_id)
+        
+        # 5. ควบคุม motor
+        self.control_stepper(result)
         
         print("✅ การสแกนเสร็จสิ้น!")
         return True

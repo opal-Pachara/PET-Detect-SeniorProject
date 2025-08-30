@@ -305,4 +305,4 @@ if __name__ == '__main__':
     print("   - GET  /api/cards           - ข้อมูลบัตรทั้งหมด")
     print("   - GET  /api/leaderboard     - ตารางคะแนน")
     
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=False)
