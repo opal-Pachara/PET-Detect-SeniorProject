@@ -243,28 +243,28 @@ if __name__ == "__main__":
         try:
             if bottle_count > 0 and can_count > 0:
                 print(f"พบทั้งขวด ({bottle_count}) และกระป๋อง ({can_count})")
-                print("หมุนขวา 90° (ช้า ๆ)")
-                self.stepper.move_degrees(90, speed=400)  # หมุนขวา 90°
+                print("หมุนขวา 90° (ค่อย ๆ หมุน)")
+                self.stepper.move_degrees(90, speed=150)  # ลดเป็น 150 steps/sec (ค่อย ๆ)
                 time.sleep(2)
                 
             elif bottle_count > 0:
                 print(f"พบขวด ({bottle_count} อัน)")
-                print("หมุนซ้าย 90° (ช้า ๆ)")
-                self.stepper.move_degrees(-90, speed=400)  # หมุนซ้าย 90°
+                print("หมุนซ้าย 90° (ค่อย ๆ หมุน)")
+                self.stepper.move_degrees(-90, speed=150)  # ลดเป็น 150 steps/sec (ค่อย ๆ)
                 time.sleep(2)
                 
             elif can_count > 0:
                 print(f"พบกระป๋อง ({can_count} อัน)")
-                print("หมุนขวา 90° (ช้า ๆ)")
-                self.stepper.move_degrees(90, speed=400)  # หมุนขวา 90°
+                print("หมุนขวา 90° (ค่อย ๆ หมุน)")
+                self.stepper.move_degrees(90, speed=150)  # ลดเป็น 150 steps/sec (ค่อย ๆ)
                 time.sleep(2)
             else:
                 print("ไม่พบขวดหรือกระป๋อง")
                 return
             
             # กลับตำแหน่งเดิม
-            print("หมุนกลับตำแหน่งเริ่มต้น (ช้า ๆ)...")
-            self.stepper.return_to_home(speed=500)  # ความเร็วกลับบ้านช้า
+            print("หมุนกลับตำแหน่งเริ่มต้น (ค่อย ๆ)...")
+            self.stepper.return_to_home(speed=200)  # ความเร็วกลับบ้านค่อย ๆ
             time.sleep(1)
             
             print("✅ ควบคุม Stepper Motor เสร็จสิ้น")
