@@ -241,9 +241,9 @@ if __name__ == "__main__":
                 'image_path': 'captured_image.jpg'
             }
             
-            # ส่งไปยัง Web Score API (รันบนเครื่องเดียวกัน)
+            # ส่งไปยัง Web Score API (บน Windows)
             web_response = self.session.post(
-                'http://localhost:8000/api/add_score',
+                'http://192.168.1.31:8000/api/add_score',  # เปลี่ยนเป็น IP ของ Windows
                 json=score_data,
                 timeout=5
             )
