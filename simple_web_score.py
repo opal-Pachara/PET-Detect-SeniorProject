@@ -45,7 +45,7 @@ def init_database():
     
     conn.commit()
     conn.close()
-    print("✅ Database initialized")
+    print("Database initialized")
 
 @app.route('/')
 def index():
@@ -128,7 +128,7 @@ def add_score():
         conn.commit()
         conn.close()
         
-        print(f"💾 Score saved: Card {card_id}, Score +{score}")
+        print(f"Score saved: Card {card_id}, Score +{score}")
         
         return jsonify({
             'success': True,
@@ -138,7 +138,7 @@ def add_score():
         })
         
     except Exception as e:
-        print(f"❌ Database error: {e}")
+        print(f"Database error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/cards')
@@ -172,12 +172,12 @@ if __name__ == '__main__':
     # Initialize database
     init_database()
     
-    print("🌐 Simple Web Score System...")
-    print("📊 URL: http://localhost:8000")
-    print("📋 API Endpoints:")
+    print("Simple Web Score System...")
+    print("URL: http://localhost:8000")
+    print("API Endpoints:")
     print("   - GET  /                    - ข้อมูลบัตรทั้งหมด")
     print("   - POST /api/add_score       - เพิ่มคะแนน")
     print("   - GET  /api/cards           - ข้อมูลบัตรทั้งหมด")
-    print("⏹️  Press Ctrl+C to stop")
+    print("Press Ctrl+C to stop")
     
     app.run(host='0.0.0.0', port=8000, debug=False)

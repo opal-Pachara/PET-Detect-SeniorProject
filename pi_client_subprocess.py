@@ -40,19 +40,19 @@ class PETDetectSubprocess:
         
         # Initialize Stepper Motor
         try:
-            print("🔧 กำลัง initialize Stepper Motor...")
+            print("กำลัง initialize Stepper Motor...")
             self.stepper = StepperMotorController(
                 step_pin=18,
                 dir_pin=19,
                 enable_pin=None
             )
-            print("✅ Stepper Motor พร้อมใช้งาน")
+            print("Stepper Motor พร้อมใช้งาน")
         except Exception as e:
-            print(f"❌ Stepper Error: {e}")
+            print(f"Stepper Error: {e}")
             self.stepper = None
     
     def signal_handler(self, signum, frame):
-        print("\n🛑 กำลังหยุดระบบ...")
+        print("\nกำลังหยุดระบบ...")
         self.running = False
         self.cleanup()
         sys.exit(0)
@@ -97,8 +97,8 @@ if __name__ == "__main__":
     
     def read_rfid_subprocess(self, timeout=30):
         """อ่าน RFID ผ่าน subprocess"""
-        print(f"🔍 รอการสแกน RFID card (timeout: {timeout} วินาที)...")
-        print("📱 วางบัตร RFID ใกล้ตัวอ่าน...")
+        print(f"รอการสแกน RFID card (timeout: {timeout} วินาที)...")
+        print("วางบัตร RFID ใกล้ตัวอ่าน...")
         
         start_time = time.time()
         
@@ -118,7 +118,7 @@ if __name__ == "__main__":
                         if data.get('success'):
                             card_id = data.get('card_id')
                             text = data.get('text', '')
-                            print(f"✅ RFID detected - ID: {card_id}")
+                            print(f"RFID detected - ID: {card_id}")
                             return card_id, text
                     except json.JSONDecodeError:
                         pass
@@ -131,26 +131,26 @@ if __name__ == "__main__":
                 logger.debug(f"Subprocess error: {e}")
                 time.sleep(0.5)
         
-        print("❌ RFID timeout")
+        print("RFID timeout")
         return None, None
     
     def open_camera(self):
         """เปิดกล้อง"""
         try:
-            print("📸 เปิดกล้อง...")
+            print("เปิดกล้อง...")
             self.camera = cv2.VideoCapture(0)
             
             if not self.camera.isOpened():
-                print("❌ ไม่สามารถเปิดกล้องได้")
+                print("ไม่สามารถเปิดกล้องได้")
                 return False
             
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             
-            print("✅ เปิดกล้องสำเร็จ")
+            print("เปิดกล้องสำเร็จ")
             return True
         except Exception as e:
-            print(f"❌ Camera error: {e}")
+            print(f"Camera error: {e}")
             return False
     
     def capture_image(self):
@@ -159,19 +159,19 @@ if __name__ == "__main__":
             return None
         
         try:
-            print("📷 ถ่ายภาพ...")
+            print("ถ่ายภาพ...")
             ret, frame = self.camera.read()
             
             if ret:
                 image_path = "captured_image.jpg"
                 cv2.imwrite(image_path, frame)
-                print(f"✅ บันทึกภาพ: {image_path}")
+                print(f"บันทึกภาพ: {image_path}")
                 return image_path
             else:
-                print("❌ ไม่สามารถถ่ายภาพได้")
+                print("ไม่สามารถถ่ายภาพได้")
                 return None
         except Exception as e:
-            print(f"❌ Capture error: {e}")
+            print(f"Capture error: {e}")
             return None
     
     def close_camera(self):
@@ -179,12 +179,12 @@ if __name__ == "__main__":
         if self.camera:
             self.camera.release()
             self.camera = None
-            print("📸 ปิดกล้องแล้ว")
+            print("ปิดกล้องแล้ว")
     
     def send_image_to_api(self, image_path):
         """ส่งภาพไปยัง API"""
         try:
-            print("🤖 ส่งภาพไปยัง AI API...")
+            print("ส่งภาพไปยัง AI API...")
             
             with open(image_path, 'rb') as f:
                 files = {'image': f}
@@ -196,20 +196,20 @@ if __name__ == "__main__":
             
             if response.status_code == 200:
                 result = response.json()
-                print("✅ ได้รับผลจาก API")
+                print("ได้รับผลจาก API")
                 return result
             else:
-                print(f"❌ API Error: {response.status_code}")
+                print(f"API Error: {response.status_code}")
                 return None
                 
         except Exception as e:
-            print(f"❌ API request failed: {e}")
+            print(f"API request failed: {e}")
             return None
     
     def process_scan_result(self, result_data, card_id=None):
         """แสดงผลการวิเคราะห์และบันทึกคะแนน"""
         if not result_data or not result_data.get('success'):
-            print("❌ ไม่ได้รับผลการวิเคราะห์")
+            print("ไม่ได้รับผลการวิเคราะห์")
             return
         
         result = result_data.get('result', {})
@@ -249,13 +249,13 @@ if __name__ == "__main__":
             )
             
             if web_response.status_code == 200:
-                print("💾 บันทึกคะแนนลงเว็บสำเร็จ")
+                print("บันทึกคะแนนลงเว็บสำเร็จ")
                 logger.info(f"Score saved to web: Card {card_id}, Score {result.get('score', 0)}")
             else:
-                print(f"⚠️ ไม่สามารถบันทึกคะแนนลงเว็บได้: {web_response.status_code}")
+                print(f"ไม่สามารถบันทึกคะแนนลงเว็บได้: {web_response.status_code}")
                 
         except Exception as e:
-            print(f"⚠️ Web score save error: {e}")
+            print(f"Web score save error: {e}")
             logger.debug(f"Web score save failed: {e}")
     
     def control_stepper(self, result_data):
