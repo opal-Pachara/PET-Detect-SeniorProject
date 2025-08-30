@@ -28,7 +28,8 @@ class StepperMotorController:
         
         # Professional Driver Settings
         # Micro step จะตั้งค่าผ่าน DIP switches บน driver แล้ว
-        self.steps_per_revolution = 3200  # สำหรับ 1/16 micro step (ปรับตาม DIP switch)
+        # SW2=OFF, SW3=OFF, SW6=OFF → ประมาณ 800-1600 steps/rev
+        self.steps_per_revolution = 1600  # ปรับตาม DIP switch ที่ตั้งจริง (SW2,3,6=OFF)
         self.current_position = 0  # ตำแหน่งปัจจุบัน (steps)
         
         # Setup GPIO
