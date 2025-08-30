@@ -249,8 +249,8 @@ if __name__ == "__main__":
                 
             elif bottle_count > 0:
                 print(f"พบขวด ({bottle_count} อัน)")
-                print("หมุนซ้าย 90°")
-                self.stepper.move_degrees(-90, speed=800)  # ใช้ speed แทน step_delay
+                print("หมุนซ้าย 180°")  # เพิ่มจาก 90° เป็น 180°
+                self.stepper.move_degrees(-180, speed=800)
                 time.sleep(2)
                 
             elif can_count > 0:
