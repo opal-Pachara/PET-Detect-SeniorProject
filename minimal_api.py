@@ -23,12 +23,12 @@ MODEL_PATH = 'model-yolov5s/best.pt'
 try:
     if os.path.exists(MODEL_PATH):
         model = YOLO(MODEL_PATH)
-        logger.info(f"✅ Model loaded successfully from {MODEL_PATH}")
+        logger.info(f"Model loaded successfully from {MODEL_PATH}")
     else:
-        logger.error(f"❌ Model file not found: {MODEL_PATH}")
+        logger.error(f"Model file not found: {MODEL_PATH}")
         model = None
 except Exception as e:
-    logger.error(f"❌ Error loading model: {e}")
+    logger.error(f"Error loading model: {e}")
     model = None
 
 @app.route('/api/scan', methods=['POST'])
@@ -66,7 +66,7 @@ def scan():
         try:
             image = Image.open(image_file.stream).convert("RGB")
             image_np = np.array(image)
-            logger.info(f"📷 Image processed: {image.size}")
+            logger.info(f"Image processed: {image.size}")
         except Exception as e:
             return jsonify({
                 'success': False, 
@@ -78,7 +78,7 @@ def scan():
         try:
             results = model(image_np)
             result = results[0]
-            logger.info(f"🤖 AI inference completed")
+            logger.info(f"AI inference completed")
         except Exception as e:
             return jsonify({
                 'success': False, 
@@ -115,7 +115,7 @@ def scan():
         # คำนวณคะแนน
         score = calculate_score(bottle_count, cap_count, label_count, can_count)
         
-        logger.info(f"🎯 Detection results - Bottles: {bottle_count}, Caps: {cap_count}, Labels: {label_count}, Cans: {can_count}, Score: {score}")
+        logger.info(f"Detection results - Bottles: {bottle_count}, Caps: {cap_count}, Labels: {label_count}, Cans: {can_count}, Score: {score}")
 
         return jsonify({
             'success': True,
@@ -132,7 +132,7 @@ def scan():
         })
 
     except Exception as e:
-        logger.error(f"❌ Unexpected error in scan endpoint: {e}")
+        logger.error(f"Unexpected error in scan endpoint: {e}")
         return jsonify({
             'success': False, 
             'message': f'Internal server error: {str(e)}',
@@ -223,13 +223,13 @@ def method_not_allowed(error):
     }), 405
 
 if __name__ == '__main__':
-    print("🚀 Starting Minimal PET Detect API...")
-    print(f"📍 Model path: {MODEL_PATH}")
-    print(f"🤖 Model status: {'✅ Loaded' if model else '❌ Not loaded'}")
-    print("🌐 Available endpoints:")
+    print("Starting Minimal PET Detect API...")
+    print(f"Model path: {MODEL_PATH}")
+    print(f"Model status: {'Loaded' if model else 'Not loaded'}")
+    print("Available endpoints:")
     print("   - POST /api/scan - Image analysis")
     print("   - GET /api/ping - Health check")
     print("   - GET /api/model-info - Model information")
-    print("⏹️  Press Ctrl+C to stop")
+    print("Press Ctrl+C to stop")
     
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สมัครสมาชิก - PET Detect</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .btn-secondary {
+            background: #4a5568;
+            margin-top: 10px;
+        }
+        .rfid-display {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .rfid-show {
+            font-family: monospace;
+            font-size: 18px;
+            background: #edf2f7;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>สมัครสมาชิก PET Detect</h1>
+            <p>ใช้ RFID ID เป็น username</p>
+        </div>
+        
+        <div class="rfid-display">
+            <h3>RFID ID</h3>
+            <p id="rfid-info">กำลังโหลด RFID ID...</p>
+            <div id="rfid-result" class="rfid-show"></div>
+        </div>
+        
+        <div id="alert-container"></div>
+        
+        <form id="registerForm" onsubmit="submitForm(event)">
+            <div class="form-group">
+                <label for="rfid_id">RFID ID *</label>
+                <input type="text" id="rfid_id" name="rfid_id" required readonly 
+                       placeholder="กำลังโหลด RFID ID...">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">รหัสผ่าน *</label>
+                <input type="password" id="password" name="password" required 
+                       placeholder="ตั้งรหัสผ่านสำหรับเข้าสู่ระบบ">
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">ยืนยันรหัสผ่าน *</label>
+                <input type="password" id="confirm_password" name="confirm_password" required 
+                       placeholder="ยืนยันรหัสผ่าน">
+            </div>
+            
+            <div class="form-group">
+                <label for="full_name">ชื่อ-นามสกุล</label>
+                <input type="text" id="full_name" name="full_name" 
+                       placeholder="ใส่ชื่อ-นามสกุล (ไม่จำเป็น)">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">อีเมล</label>
+                <input type="email" id="email" name="email" 
+                       placeholder="ใส่อีเมล (ไม่จำเป็น)">
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">เบอร์โทรศัพท์</label>
+                <input type="tel" id="phone" name="phone" 
+                       placeholder="ใส่เบอร์โทรศัพท์ (ไม่จำเป็น)">
+            </div>
+            
+            <button type="submit" class="btn">สมัครสมาชิก</button>
+            <a href="/" class="btn btn-secondary" style="text-decoration: none; display: block; text-align: center;">
+                กลับหน้าแรก
+            </a>
+        </form>
+    </div>
+    
+    <script>
+        // โหลด RFID ID จาก URL parameter
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rfid = urlParams.get('rfid');
+            
+            if (rfid) {
+                document.getElementById('rfid_id').value = rfid;
+                document.getElementById('rfid-result').innerHTML = 'RFID ID: ' + rfid;
+                document.getElementById('rfid-info').textContent = 'RFID ID ที่สแกนแล้ว';
+            } else {
+                // ถ้าไม่มี RFID ใน URL ให้ใส่เอง
+                document.getElementById('rfid_id').readOnly = false;
+                document.getElementById('rfid_id').placeholder = 'ใส่ RFID ID';
+                document.getElementById('rfid-info').textContent = 'ใส่ RFID ID เอง';
+            }
+        }
+        
+        function submitForm(event) {
+            event.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            
+            if (password !== confirmPassword) {
+                showAlert('รหัสผ่านไม่ตรงกัน', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showAlert('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
+                return;
+            }
+            
+            const formData = {
+                rfid_id: document.getElementById('rfid_id').value,
+                password: password,
+                full_name: document.getElementById('full_name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value
+            };
+            
+            if (!formData.rfid_id) {
+                showAlert('กรุณาสแกน RFID card ก่อน', 'error');
+                return;
+            }
+            
+            fetch('/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('สมัครสมาชิกสำเร็จ! Username: ' + data.member.username, 'success');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    showAlert('เกิดข้อผิดพลาด: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showAlert('เกิดข้อผิดพลาด: ' + error.message, 'error');
+            });
+        }
+        
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            
+            alertContainer.innerHTML = `
+                <div class="alert ${alertClass}">
+                    ${message}
+                </div>
+            `;
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

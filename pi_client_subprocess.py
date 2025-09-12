@@ -241,9 +241,9 @@ if __name__ == "__main__":
                 'image_path': 'captured_image.jpg'
             }
             
-            # ส่งไปยัง Web Score API (บน Windows)
+            # ส่งไปยัง Member System API (บน Windows)
             web_response = self.session.post(
-                'http://192.168.1.31:8000/api/add_score',  # เปลี่ยนเป็น IP ของ Windows
+                'http://192.168.1.31:9000/api/add_score',  # เปลี่ยน port เป็น 9000
                 json=score_data,
                 timeout=5
             )
@@ -261,7 +261,7 @@ if __name__ == "__main__":
     def control_stepper(self, result_data):
         """ควบคุม Stepper Motor"""
         if not self.stepper:
-            print("❌ Stepper motor not available")
+            print("Stepper motor not available")
             return
         
         if not result_data or not result_data.get('success'):
@@ -301,22 +301,22 @@ if __name__ == "__main__":
             self.stepper.return_to_home(speed=200)  # ความเร็วกลับบ้านค่อย ๆ
             time.sleep(1)
             
-            print("✅ ควบคุม Stepper Motor เสร็จสิ้น")
+            print("ควบคุม Stepper Motor เสร็จสิ้น")
             
         except Exception as e:
-            print(f"❌ Stepper control error: {e}")
+            print(f"Stepper control error: {e}")
         
         print("=" * 35)
     
     def run_single_scan(self):
         """รันการสแกนครั้งเดียว"""
-        print("\n🚀 เริ่มกระบวนการสแกน PET")
+        print("\nเริ่มกระบวนการสแกน PET")
         print("=" * 50)
         
         # 1. สแกน RFID ผ่าน subprocess
         card_id, text = self.read_rfid_subprocess(timeout=30)
         if not card_id:
-            print("❌ ไม่พบบัตร RFID")
+            print("ไม่พบบัตร RFID")
             return False
         
         # 2. เปิดกล้องและถ่ายภาพ
@@ -340,12 +340,12 @@ if __name__ == "__main__":
         # 5. ควบคุม motor
         self.control_stepper(result)
         
-        print("✅ การสแกนเสร็จสิ้น!")
+        print("การสแกนเสร็จสิ้น!")
         return True
     
     def run_continuous_scan_system(self):
         """รันระบบสแกนต่อเนื่อง"""
-        print("🚀 ระบบสแกน PET (Subprocess RFID)")
+        print("ระบบสแกน PET (Subprocess RFID)")
         print("กด Ctrl+C เพื่อหยุด")
         print("=" * 60)
         
@@ -354,15 +354,15 @@ if __name__ == "__main__":
         while self.running:
             try:
                 scan_count += 1
-                print(f"\n🔄 รอบที่ {scan_count}:")
+                print(f"\nรอบที่ {scan_count}:")
                 
                 success = self.run_single_scan()
                 
                 if success:
-                    print("💤 รอ 3 วินาทีก่อนรอบต่อไป...")
+                    print("รอ 3 วินาทีก่อนรอบต่อไป...")
                     time.sleep(3)
                 else:
-                    print("💤 รอ 2 วินาทีก่อนลองใหม่...")
+                    print("รอ 2 วินาทีก่อนลองใหม่...")
                     time.sleep(2)
                 
             except KeyboardInterrupt:
@@ -383,19 +383,19 @@ if __name__ == "__main__":
             if os.path.exists('rfid_helper.py'):
                 os.remove('rfid_helper.py')
             
-            print("🧹 Cleanup completed")
+            print("Cleanup completed")
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
 
 def main():
     """Main function"""
-    print("🔧 PET Detect System - Subprocess RFID Method")
+    print("PET Detect System - Subprocess RFID Method")
     print("=" * 60)
     
     client = PETDetectSubprocess(api_url=API_URL)
     
-    print("✅ System พร้อมใช้งาน!")
-    print("\n📋 วิธีการทำงาน:")
+    print("System พร้อมใช้งาน!")
+    print("\nวิธีการทำงาน:")
     print("- RFID: ใช้ subprocess (แยก process)")
     print("- Camera: ภายใน main process")
     print("- Stepper: ภายใน main process")

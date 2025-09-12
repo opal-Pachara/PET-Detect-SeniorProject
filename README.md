@@ -1,424 +1,198 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-# 🐾 PET-Detect-SeniorProject – Git Workflow Guide
-=======
-# 🐾 PET Detection System - ระบบตรวจจับขวด PET
->>>>>>> fd413dfd8328b8377909f567fd5b74cd5d59ac37
+# PET Detect Senior Project
 
-ระบบตรวจจับขวด PET ที่ใช้ YOLOv5 สำหรับการตรวจจับและวิเคราะห์ขวดพลาสติก พร้อมระบบเก็บคะแนนสำหรับผู้ใช้
+ระบบตรวจจับขวด PET และการจัดการคะแนนด้วย RFID
 
-## ✨ คุณสมบัติหลัก
+## 🎯 ฟีเจอร์หลัก
 
-### 🔍 การตรวจจับ
-- ตรวจจับขวด PET, ฝา, และสลาก
-- ใช้โมเดล YOLOv5 ที่เทรนด้วยข้อมูลเฉพาะ
-- ปรับความแม่นยำได้ (Confidence Threshold)
-- แสดงผลแบบ Real-time
+### 🤖 AI Detection
+- ตรวจจับขวด PET, กระป๋อง, ฝา, สลาก
+- ใช้ YOLOv5 model
+- คำนวณคะแนนอัตโนมัติ
 
-### 🏆 ระบบคะแนน
-- **เก็บคะแนนอัตโนมัติ**: ทุกครั้งที่ตรวจจับจะคำนวณและบันทึกคะแนน
-- **สถิติผู้ใช้**: แสดงคะแนนรวม, จำนวนการตรวจจับ, คะแนนสูงสุด, คะแนนเฉลี่ย
-- **ประวัติคะแนน**: ดูประวัติการตรวจจับย้อนหลัง
-- **ตารางคะแนน**: แสดงอันดับผู้ใช้ทั้งหมด
-- **การจัดอันดับ**: แสดงอันดับของผู้ใช้ในระบบ
+### 🏷️ RFID System
+- สแกน RFID card
+- สร้างสมาชิกอัตโนมัติ
+- จัดการคะแนนส่วนตัว
 
-### 📊 การวิเคราะห์ขั้นสูง
-- วิเคราะห์สีและความโปร่งใสของขวด
-- วัดขนาดขวด (ความกว้าง, ความสูง, ปริมาตร)
-- จำแนกประเภทขวด
-- การปรับเทียบขนาด (Calibration)
+### 🎮 Hardware Control
+- ควบคุม Stepper Motor
+- เรียงขวดตามประเภท
+- ระบบกล้อง USB
 
-## 🎯 ระบบการให้คะแนน
-
-คะแนนจะถูกคำนวณตามสูตร:
-```
-คะแนน = (จำนวนขวด × น้ำหนักขวด) - (จำนวนฝา × น้ำหนักฝา) - (จำนวนสลาก × น้ำหนักสลาก)
-```
-
-- **ขวด**: ให้คะแนนบวก (น้ำหนัก = 10)
-- **ฝา**: หักคะแนน (น้ำหนัก = 2)
-- **สลาก**: หักคะแนน (น้ำหนัก = 1)
+### 🌐 Web Interface
+- ระบบสมาชิก
+- ตารางคะแนน
+- ประวัติการสแกน
 
 ## 🚀 การติดตั้ง
 
-1. **Clone โปรเจค**
-```bash
-git clone <repository-url>
-cd PET-Detect-SeniorProject
-```
-
-2. **ติดตั้ง Dependencies**
+### 1. ติดตั้ง Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **รันแอปพลิเคชัน**
+### 2. ติดตั้ง MySQL
+- ดาวน์โหลด XAMPP: https://www.apachefriends.org/download.html
+- เปิด Apache และ MySQL
+- รัน `create_database.sql` ใน phpMyAdmin
+
+### 3. รันระบบ
 ```bash
-streamlit run code/main.py
+# AI API
+python minimal_api.py
+
+# Member System
+python member_system.py
+
+# Pi Client
+python pi_client_subprocess.py
 ```
 
-## 📁 โครงสร้างโปรเจค
+## 📁 โครงสร้างไฟล์
 
 ```
 PET-Detect-SeniorProject/
 ├── code/
-│   ├── main.py              # ไฟล์หลักของแอปพลิเคชัน
-│   ├── score_manager.py     # จัดการระบบคะแนน
-│   ├── auth.py              # ระบบ Authentication
-│   ├── db.py                # การเชื่อมต่อฐานข้อมูล
-│   ├── config.py            # การตั้งค่า
-│   ├── app_utils.py         # Utilities
-│   └── utils.py             # ฟังก์ชันช่วยเหลือ
+│   ├── api.py                 # AI API (Flask)
+│   ├── main.py               # Main app
+│   └── ...
 ├── model-yolov5s/
-│   └── Detect.py            # โมเดล YOLOv5
-├── requirements.txt         # Dependencies
-└── README.md               # เอกสารนี้
+│   └── best.pt               # YOLOv5 model
+├── templates/
+│   ├── login.html            # หน้า Login
+│   ├── register.html         # หน้าสมัครสมาชิก
+│   └── members.html          # ตารางคะแนน
+├── pi_client_subprocess.py   # Pi Client
+├── member_system.py          # Member System
+├── minimal_api.py            # AI API
+├── create_database.sql       # Database setup
+└── requirements.txt          # Dependencies
 ```
 
-## 🗄️ ฐานข้อมูล
+## 🔧 การใช้งาน
 
-ระบบใช้ MongoDB สำหรับเก็บข้อมูล:
-- **users**: ข้อมูลผู้ใช้
-- **user_scores**: คะแนนรวมของผู้ใช้
-- **score_history**: ประวัติการตรวจจับและคะแนน
+### 1. เข้าสู่ระบบ
+- เปิด: http://localhost:9000
+- ใส่ RFID ID
+- ตั้งรหัสผ่าน (ครั้งแรก)
 
-## 🎮 วิธีการใช้งาน
+### 2. สแกน RFID
+- Pi Client จะสแกน RFID อัตโนมัติ
+- สร้างสมาชิกใหม่ (ถ้ายังไม่มี)
+- บันทึกคะแนนลงฐานข้อมูล
 
-1. **ลงทะเบียน/เข้าสู่ระบบ**
-   - สร้างบัญชีใหม่หรือเข้าสู่ระบบด้วยบัญชีที่มีอยู่
+### 3. ดูคะแนน
+- หน้า Dashboard: http://localhost:9000/dashboard
+- รายละเอียดสมาชิก: http://localhost:9000/member/<rfid_id>
 
-2. **อัปโหลดรูปภาพ**
-   - เลือกหน้า "Upload & Detect" หรือ "Advanced Analysis"
-   - อัปโหลดรูปภาพที่ต้องการตรวจจับ
+## 🗄️ Database Schema
 
-3. **ดูผลการตรวจจับ**
-   - ระบบจะแสดงผลการตรวจจับและคะแนนที่ได้
-   - คะแนนจะถูกบันทึกอัตโนมัติ
-
-4. **ดูคะแนนและสถิติ**
-   - เลือกหน้า "คะแนน" เพื่อดูสถิติของคุณ
-   - ดูประวัติการตรวจจับและตารางคะแนน
-
-## 🔧 การตั้งค่า
-
-### Confidence Threshold
-ปรับความแม่นยำในการตรวจจับ (0.1 - 0.9)
-
-### Reference Width
-ตั้งค่าความกว้างอ้างอิงสำหรับการวัดขนาด (มิลลิเมตร)
-
-## 📊 สถิติที่แสดง
-
-### สถิติผู้ใช้
-- คะแนนรวม
-- จำนวนการตรวจจับ
-- คะแนนสูงสุด
-- คะแนนเฉลี่ย
-- จำนวนขวด/ฝา/สลากทั้งหมด
-- อันดับในระบบ
-
-### ประวัติคะแนน
-- คะแนนแต่ละครั้ง
-- จำนวนวัตถุที่ตรวจจับได้
-- วันเวลา
-
-### ตารางคะแนน
-- อันดับผู้ใช้ทั้งหมด
-- คะแนนรวม
-- จำนวนการตรวจจับ
-- คะแนนสูงสุด
-
-## 🛠️ เทคโนโลยีที่ใช้
-
-- **Python 3.x**
-- **Streamlit** - Web Framework
-- **PyTorch** - Deep Learning
-- **YOLOv5** - Object Detection
-- **OpenCV** - Image Processing
-- **MongoDB** - Database
-- **PIL** - Image Handling
-
-## 👥 ทีมพัฒนา
-
-โปรเจคนี้พัฒนาขึ้นเป็น Senior Project ในสาขาวิทยาการคอมพิวเตอร์
-
-## 📝 หมายเหตุ
-
-- ระบบจะบันทึกคะแนนอัตโนมัติทุกครั้งที่มีการตรวจจับ
-- คะแนนจะถูกคำนวณตามจำนวนวัตถุที่ตรวจจับได้
-- สามารถดูประวัติและสถิติได้ตลอดเวลา
-- ระบบรองรับผู้ใช้หลายคนพร้อมกัน
-
-## 🔧 Technical Details
-
-### เทคโนโลยีที่ใช้
-- **Python 3.x** - ภาษาหลัก
-- **Streamlit** - Web framework
-- **PyTorch** - Deep learning framework
-- **YOLOv5** - Object detection model
-- **OpenCV** - Computer vision library
-- **Pillow** - Image processing
-
-### โมเดล
-- **Architecture**: YOLOv5s
-- **Custom Training**: เทรนด้วยชุดข้อมูล PET
-- **Performance**: Real-time detection
-
-## 📊 ผลลัพธ์
-
-ระบบจะแสดง:
-- รูปภาพต้นฉบับ
-- รูปภาพที่มี bounding boxes
-- จำนวนวัตถุที่ตรวจจับได้
-- ความแม่นยำ (Confidence) ของแต่ละการตรวจจับ
-- สถิติการวิเคราะห์
-
-## 🛠️ การปรับแต่ง
-
-### ปรับ Confidence Threshold
-- ใช้ slider ใน sidebar
-- ค่าตั้งแต่ 0.1 ถึง 1.0
-- ค่ายิ่งสูงยิ่งแม่นยำแต่จะตรวจจับได้น้อยลง
-
-### เพิ่มคลาสใหม่
-1. เทรนโมเดลใหม่ด้วยข้อมูลคลาสที่ต้องการ
-2. แทนที่ไฟล์ `best.pt`
-3. อัปเดตโค้ดตามความต้องการ
-
-## 🐛 การแก้ไขปัญหา
-
-### ปัญหาที่พบบ่อย
-
-1. **โมเดลไม่โหลด**
-   - ตรวจสอบว่ามีไฟล์ `best.pt` ในโฟลเดอร์ `model-yolov5s/`
-   - ตรวจสอบ path ในโค้ด
-
-2. **Dependencies ไม่ครบ**
-   - รัน `pip install -r requirements.txt`
-   - ตรวจสอบเวอร์ชัน Python (แนะนำ 3.8+)
-
-3. **การตรวจจับไม่แม่นยำ**
-   - ลด Confidence Threshold
-   - ตรวจสอบคุณภาพรูปภาพ
-   - เทรนโมเดลใหม่ด้วยข้อมูลเพิ่มเติม
-
-## 📞 การติดต่อ
-
-หากมีปัญหาหรือข้อสงสัย กรุณาติดต่อทีมพัฒนา
-
----
-
-<<<<<<< HEAD
-จัดทำโดย: ทีม PET-Detect  
-โครงการปี: 2024 ~ 2025
-=======
-# 🐾 PET Detection System - ระบบตรวจจับขวด PET
-
-ระบบตรวจจับขวด PET ที่ใช้ YOLOv5 สำหรับการตรวจจับและวิเคราะห์ขวดพลาสติก พร้อมระบบเก็บคะแนนสำหรับผู้ใช้
-
-## ✨ คุณสมบัติหลัก
-
-### 🔍 การตรวจจับ
-- ตรวจจับขวด PET, ฝา, และสลาก
-- ใช้โมเดล YOLOv5 ที่เทรนด้วยข้อมูลเฉพาะ
-- ปรับความแม่นยำได้ (Confidence Threshold)
-- แสดงผลแบบ Real-time
-
-### 🏆 ระบบคะแนน
-- **เก็บคะแนนอัตโนมัติ**: ทุกครั้งที่ตรวจจับจะคำนวณและบันทึกคะแนน
-- **สถิติผู้ใช้**: แสดงคะแนนรวม, จำนวนการตรวจจับ, คะแนนสูงสุด, คะแนนเฉลี่ย
-- **ประวัติคะแนน**: ดูประวัติการตรวจจับย้อนหลัง
-- **ตารางคะแนน**: แสดงอันดับผู้ใช้ทั้งหมด
-- **การจัดอันดับ**: แสดงอันดับของผู้ใช้ในระบบ
-
-### 📊 การวิเคราะห์ขั้นสูง
-- วิเคราะห์สีและความโปร่งใสของขวด
-- วัดขนาดขวด (ความกว้าง, ความสูง, ปริมาตร)
-- จำแนกประเภทขวด
-- การปรับเทียบขนาด (Calibration)
-
-## 🎯 ระบบการให้คะแนน
-
-คะแนนจะถูกคำนวณตามสูตร:
-```
-คะแนน = (จำนวนขวด × น้ำหนักขวด) - (จำนวนฝา × น้ำหนักฝา) - (จำนวนสลาก × น้ำหนักสลาก)
+### Members Table
+```sql
+CREATE TABLE members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    rfid_id VARCHAR(50) UNIQUE NOT NULL,
+    username VARCHAR(100) NOT NULL,
+    password_hash VARCHAR(255),
+    full_name VARCHAR(200),
+    email VARCHAR(200),
+    phone VARCHAR(20),
+    total_score INT DEFAULT 0,
+    scan_count INT DEFAULT 0,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 ```
 
-- **ขวด**: ให้คะแนนบวก (น้ำหนัก = 10)
-- **ฝา**: หักคะแนน (น้ำหนัก = 2)
-- **สลาก**: หักคะแนน (น้ำหนัก = 1)
-
-## 🚀 การติดตั้ง
-
-1. **Clone โปรเจค**
-```bash
-git clone <repository-url>
-cd PET-Detect-SeniorProject
+### Scan Logs Table
+```sql
+CREATE TABLE scan_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    member_id INT NOT NULL,
+    rfid_id VARCHAR(50) NOT NULL,
+    bottle_count INT DEFAULT 0,
+    can_count INT DEFAULT 0,
+    cap_count INT DEFAULT 0,
+    label_count INT DEFAULT 0,
+    score INT DEFAULT 0,
+    image_path VARCHAR(500),
+    scan_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+);
 ```
 
-2. **ติดตั้ง Dependencies**
-```bash
-pip install -r requirements.txt
+## 🔌 API Endpoints
+
+### AI API (Port 5000)
+- `POST /scan_image` - วิเคราะห์ภาพ
+- `GET /ping` - ตรวจสอบสถานะ
+
+### Member System (Port 9000)
+- `GET /` - หน้า Login
+- `GET /dashboard` - ตารางคะแนน
+- `GET /register` - หน้าสมัครสมาชิก
+- `POST /api/add_score` - เพิ่มคะแนน
+- `POST /api/check_member` - ตรวจสอบสมาชิก
+
+## 🎮 Hardware Setup
+
+### Raspberry Pi
+- RFID Reader (MFRC522)
+- USB Camera
+- Stepper Motor + Driver
+- GPIO Pins: 18, 19 (Stepper), 10, 11, 12, 13 (RFID)
+
+### Wiring
+```
+Stepper Motor:
+- STEP → GPIO 18
+- DIR → GPIO 19
+- ENA → GPIO (optional)
+
+RFID:
+- SDA → GPIO 10
+- SCK → GPIO 11
+- MOSI → GPIO 12
+- MISO → GPIO 13
+- IRQ → GPIO (not used)
+- GND → GND
+- RST → GPIO 15
+- 3.3V → 3.3V
 ```
 
-3. **รันแอปพลิเคชัน**
-```bash
-streamlit run code/main.py
-```
+## 📊 คะแนน
 
-## 📁 โครงสร้างโปรเจค
+- ขวด PET: +50 คะแนน
+- กระป๋อง: +100 คะแนน
+- ฝา: -10 คะแนน
+- สลาก: -10 คะแนน
 
-```
-PET-Detect-SeniorProject/
-├── code/
-│   ├── main.py              # ไฟล์หลักของแอปพลิเคชัน
-│   ├── score_manager.py     # จัดการระบบคะแนน
-│   ├── auth.py              # ระบบ Authentication
-│   ├── db.py                # การเชื่อมต่อฐานข้อมูล
-│   ├── config.py            # การตั้งค่า
-│   ├── app_utils.py         # Utilities
-│   └── utils.py             # ฟังก์ชันช่วยเหลือ
-├── model-yolov5s/
-│   └── Detect.py            # โมเดล YOLOv5
-├── requirements.txt         # Dependencies
-└── README.md               # เอกสารนี้
-```
+## 🐛 Troubleshooting
 
-## 🗄️ ฐานข้อมูล
+### MySQL Connection Error
+1. ตรวจสอบ XAMPP MySQL ทำงาน
+2. รัน `create_database.sql` ใน phpMyAdmin
+3. ตรวจสอบ user `pet_user` และ password
 
-ระบบใช้ MongoDB สำหรับเก็บข้อมูล:
-- **users**: ข้อมูลผู้ใช้
-- **user_scores**: คะแนนรวมของผู้ใช้
-- **score_history**: ประวัติการตรวจจับและคะแนน
+### Pi Client Error
+1. ตรวจสอบ GPIO pins
+2. ตรวจสอบ USB camera
+3. ตรวจสอบ network connection
 
-## 🎮 วิธีการใช้งาน
+### AI Model Error
+1. ตรวจสอบไฟล์ `model-yolov5s/best.pt`
+2. ตรวจสอบ dependencies: `torch`, `ultralytics`
 
-1. **ลงทะเบียน/เข้าสู่ระบบ**
-   - สร้างบัญชีใหม่หรือเข้าสู่ระบบด้วยบัญชีที่มีอยู่
+## 👥 Contributors
 
-2. **อัปโหลดรูปภาพ**
-   - เลือกหน้า "Upload & Detect" หรือ "Advanced Analysis"
-   - อัปโหลดรูปภาพที่ต้องการตรวจจับ
+- Senior Project Team
+- PET Detection System
 
-3. **ดูผลการตรวจจับ**
-   - ระบบจะแสดงผลการตรวจจับและคะแนนที่ได้
-   - คะแนนจะถูกบันทึกอัตโนมัติ
+## 📄 License
 
-4. **ดูคะแนนและสถิติ**
-   - เลือกหน้า "คะแนน" เพื่อดูสถิติของคุณ
-   - ดูประวัติการตรวจจับและตารางคะแนน
+MIT License
 
-## 🔧 การตั้งค่า
+## 📞 Support
 
-### Confidence Threshold
-ปรับความแม่นยำในการตรวจจับ (0.1 - 0.9)
-
-### Reference Width
-ตั้งค่าความกว้างอ้างอิงสำหรับการวัดขนาด (มิลลิเมตร)
-
-## 📊 สถิติที่แสดง
-
-### สถิติผู้ใช้
-- คะแนนรวม
-- จำนวนการตรวจจับ
-- คะแนนสูงสุด
-- คะแนนเฉลี่ย
-- จำนวนขวด/ฝา/สลากทั้งหมด
-- อันดับในระบบ
-
-### ประวัติคะแนน
-- คะแนนแต่ละครั้ง
-- จำนวนวัตถุที่ตรวจจับได้
-- วันเวลา
-
-### ตารางคะแนน
-- อันดับผู้ใช้ทั้งหมด
-- คะแนนรวม
-- จำนวนการตรวจจับ
-- คะแนนสูงสุด
-
-## 🛠️ เทคโนโลยีที่ใช้
-
-- **Python 3.x**
-- **Streamlit** - Web Framework
-- **PyTorch** - Deep Learning
-- **YOLOv5** - Object Detection
-- **OpenCV** - Image Processing
-- **MongoDB** - Database
-- **PIL** - Image Handling
-
-## 👥 ทีมพัฒนา
-
-โปรเจคนี้พัฒนาขึ้นเป็น Senior Project ในสาขาวิทยาการคอมพิวเตอร์
-
-## 📝 หมายเหตุ
-
-- ระบบจะบันทึกคะแนนอัตโนมัติทุกครั้งที่มีการตรวจจับ
-- คะแนนจะถูกคำนวณตามจำนวนวัตถุที่ตรวจจับได้
-- สามารถดูประวัติและสถิติได้ตลอดเวลา
-- ระบบรองรับผู้ใช้หลายคนพร้อมกัน
-
-## 🔧 Technical Details
-
-### เทคโนโลยีที่ใช้
-- **Python 3.x** - ภาษาหลัก
-- **Streamlit** - Web framework
-- **PyTorch** - Deep learning framework
-- **YOLOv5** - Object detection model
-- **OpenCV** - Computer vision library
-- **Pillow** - Image processing
-
-### โมเดล
-- **Architecture**: YOLOv5s
-- **Custom Training**: เทรนด้วยชุดข้อมูล PET
-- **Performance**: Real-time detection
-
-## 📊 ผลลัพธ์
-
-ระบบจะแสดง:
-- รูปภาพต้นฉบับ
-- รูปภาพที่มี bounding boxes
-- จำนวนวัตถุที่ตรวจจับได้
-- ความแม่นยำ (Confidence) ของแต่ละการตรวจจับ
-- สถิติการวิเคราะห์
-
-## 🛠️ การปรับแต่ง
-
-### ปรับ Confidence Threshold
-- ใช้ slider ใน sidebar
-- ค่าตั้งแต่ 0.1 ถึง 1.0
-- ค่ายิ่งสูงยิ่งแม่นยำแต่จะตรวจจับได้น้อยลง
-
-### เพิ่มคลาสใหม่
-1. เทรนโมเดลใหม่ด้วยข้อมูลคลาสที่ต้องการ
-2. แทนที่ไฟล์ `best.pt`
-3. อัปเดตโค้ดตามความต้องการ
-
-## 🐛 การแก้ไขปัญหา
-
-### ปัญหาที่พบบ่อย
-
-1. **โมเดลไม่โหลด**
-   - ตรวจสอบว่ามีไฟล์ `best.pt` ในโฟลเดอร์ `model-yolov5s/`
-   - ตรวจสอบ path ในโค้ด
-
-2. **Dependencies ไม่ครบ**
-   - รัน `pip install -r requirements.txt`
-   - ตรวจสอบเวอร์ชัน Python (แนะนำ 3.8+)
-
-3. **การตรวจจับไม่แม่นยำ**
-   - ลด Confidence Threshold
-   - ตรวจสอบคุณภาพรูปภาพ
-   - เทรนโมเดลใหม่ด้วยข้อมูลเพิ่มเติม
-
-## 📞 การติดต่อ
-
-หากมีปัญหาหรือข้อสงสัย กรุณาติดต่อทีมพัฒนา
-
----
-
-**หมายเหตุ**: โปรเจคนี้พัฒนาขึ้นเพื่อการศึกษาและวิจัยในด้าน Computer Vision และ Machine Learning 
->>>>>>> Front-end2
-=======
-**หมายเหตุ**: โปรเจคนี้พัฒนาขึ้นเพื่อการศึกษาและวิจัยในด้าน Computer Vision และ Machine Learning 
->>>>>>> fd413dfd8328b8377909f567fd5b74cd5d59ac37
+หากมีปัญหาการใช้งาน กรุณาติดต่อทีมพัฒนา
