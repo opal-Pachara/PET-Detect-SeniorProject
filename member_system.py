@@ -352,43 +352,6 @@ def dashboard():
         logger.error(f"Index page error: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/member/<rfid_id>')
-def member_detail(rfid_id):
-    """รายละเอียดสมาชิก"""
-    try:
-        connection = get_db_connection()
-        if not connection:
-            return jsonify({'error': 'Database connection failed'}), 500
-        
-        cursor = connection.cursor(dictionary=True)
-        
-        # ข้อมูลสมาชิก
-        cursor.execute("SELECT * FROM members WHERE rfid_id = %s", (rfid_id,))
-        member = cursor.fetchone()
-        
-        if not member:
-            return jsonify({'error': 'Member not found'}), 404
-        
-        # ประวัติการสแกน
-        cursor.execute('''
-            SELECT bottle_count, can_count, cap_count, label_count, 
-                   score, scan_timestamp, image_path
-            FROM scan_logs 
-            WHERE rfid_id = %s 
-            ORDER BY scan_timestamp DESC
-            LIMIT 50
-        ''', (rfid_id,))
-        
-        scan_history = cursor.fetchall()
-        
-        cursor.close()
-        connection.close()
-        
-        return render_template('member_detail.html', member=member, history=scan_history)
-        
-    except Error as e:
-        logger.error(f"Member detail error: {e}")
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
