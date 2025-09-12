@@ -191,7 +191,10 @@
             const rfid = urlParams.get('rfid');
             
             if (rfid) {
-                document.getElementById('rfid_result').innerHTML = 'RFID ID: ' + rfid;
+                const rfidElement = document.getElementById('rfid_result');
+                if (rfidElement) {
+                    rfidElement.innerHTML = 'RFID ID: ' + rfid;
+                }
                 loadMemberInfo(rfid);
             } else {
                 showAlert('ไม่พบ RFID ID', 'error');

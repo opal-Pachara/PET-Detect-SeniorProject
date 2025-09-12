@@ -217,6 +217,7 @@ def update_member_info(rfid_id, username, password, full_name, email, phone):
     try:
         connection = get_db_connection()
         if not connection:
+            logger.error("Database connection failed")
             return False
         
         cursor = connection.cursor()
@@ -224,8 +225,12 @@ def update_member_info(rfid_id, username, password, full_name, email, phone):
         # Hash password
         password_hash = None
         if password:
-            import bcrypt
-            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            try:
+                import bcrypt
+                password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            except Exception as e:
+                logger.error(f"Password hashing error: {e}")
+                return False
         
         # อัพเดทข้อมูล
         update_query = '''
@@ -238,17 +243,28 @@ def update_member_info(rfid_id, username, password, full_name, email, phone):
                 updated_at = CURRENT_TIMESTAMP
             WHERE rfid_id = %s
         '''
+        
+        logger.info(f"Updating member: {rfid_id} -> {username}")
         cursor.execute(update_query, (username, password_hash, full_name, email, phone, rfid_id))
+        
+        if cursor.rowcount == 0:
+            logger.error(f"No member found with RFID ID: {rfid_id}")
+            cursor.close()
+            connection.close()
+            return False
         
         connection.commit()
         cursor.close()
         connection.close()
         
-        logger.info(f"Member updated: {rfid_id} -> {username}")
+        logger.info(f"Member updated successfully: {rfid_id} -> {username}")
         return True
         
     except Error as e:
         logger.error(f"Update member error: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
         return False
 
 def update_member_score(rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path=None):
