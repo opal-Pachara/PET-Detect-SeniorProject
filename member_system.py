@@ -430,6 +430,11 @@ def member_login():
     """หน้าเข้าสู่ระบบสมาชิก"""
     return render_template('member_login.html')
 
+@app.route('/member_detail/<rfid_id>')
+def member_detail(rfid_id):
+    """หน้ารายละเอียดสมาชิก"""
+    return render_template('member_detail.html', rfid_id=rfid_id)
+
 @app.route('/edit_profile')
 def edit_profile():
     """หน้าแก้ไขข้อมูลสมาชิก"""

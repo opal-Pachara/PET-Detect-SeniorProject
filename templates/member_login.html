@@ -272,7 +272,7 @@
                     if (data.valid) {
                         showAlert('เข้าสู่ระบบสำเร็จ!', 'success');
                         setTimeout(() => {
-                            window.location.href = '/dashboard';
+                            window.location.href = '/member_detail/' + rfid;
                         }, 1500);
                     } else {
                         showAlert('รหัสผ่านไม่ถูกต้อง', 'error');
