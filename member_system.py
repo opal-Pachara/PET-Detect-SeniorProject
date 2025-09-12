@@ -391,7 +391,46 @@ def register():
 @app.route('/members')
 def members():
     """หน้าแสดงอันดับสมาชิก"""
-    return render_template('members.html')
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cursor = connection.cursor(dictionary=True)
+        
+        # ดึงข้อมูลสมาชิกทั้งหมดเรียงตามคะแนน
+        cursor.execute('''
+            SELECT rfid_id, username, full_name, total_score, scan_count, 
+                   created_at, updated_at, status
+            FROM members 
+            WHERE status = 'active'
+            ORDER BY total_score DESC, scan_count DESC
+        ''')
+        
+        members = cursor.fetchall()
+        
+        # สถิติรวม
+        cursor.execute('SELECT COUNT(*) as total_members FROM members WHERE status = "active"')
+        total_members = cursor.fetchone()['total_members']
+        
+        cursor.execute('SELECT SUM(total_score) as total_score FROM members WHERE status = "active"')
+        total_score = cursor.fetchone()['total_score'] or 0
+        
+        cursor.execute('SELECT SUM(scan_count) as total_scans FROM members WHERE status = "active"')
+        total_scans = cursor.fetchone()['total_scans'] or 0
+        
+        cursor.close()
+        connection.close()
+        
+        return render_template('members.html', 
+                             members=members, 
+                             total_members=total_members,
+                             total_score=total_score,
+                             total_scans=total_scans)
+        
+    except Exception as e:
+        logger.error(f"Members page error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/member_login')
 def member_login():
