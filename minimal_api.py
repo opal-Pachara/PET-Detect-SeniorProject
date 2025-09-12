@@ -232,4 +232,4 @@ if __name__ == '__main__':
     print("   - GET /api/model-info - Model information")
     print("Press Ctrl+C to stop")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
