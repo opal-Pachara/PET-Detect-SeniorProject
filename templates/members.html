@@ -203,7 +203,7 @@
                         <td style="text-align: center;">{{ member.scan_count }}</td>
                         <td style="text-align: center;">{{ member.created_at.strftime('%d/%m/%Y') if member.created_at else '-' }}</td>
                         <td style="text-align: center;">
-                            <a href="/member/{{ member.rfid_id }}" style="color: #667eea; text-decoration: none;">
+                            <a href="/member_detail/{{ member.rfid_id }}" style="color: #667eea; text-decoration: none;">
                                 ดูรายละเอียด →
                             </a>
                         </td>
@@ -221,9 +221,12 @@
         </div>
     </div>
     
-    <button class="refresh-btn" onclick="window.location.reload()">
-        รีเฟรช
-    </button>
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="/" class="btn" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; margin: 5px;">กลับหน้าหลัก</a>
+        <button class="refresh-btn" onclick="window.location.reload()">
+            รีเฟรช
+        </button>
+    </div>
     
     <script>
         // Auto refresh ทุก 30 วินาที

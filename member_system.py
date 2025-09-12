@@ -388,6 +388,11 @@ def register():
     
     return render_template('register.html')
 
+@app.route('/members')
+def members():
+    """หน้าแสดงอันดับสมาชิก"""
+    return render_template('members.html')
+
 @app.route('/member_login')
 def member_login():
     """หน้าเข้าสู่ระบบสมาชิก"""
