@@ -183,10 +183,10 @@
                 if (data.success) {
                     if (data.is_member) {
                         if (data.has_password) {
-                            // เป็นสมาชิกและมี password แล้ว - ไปหน้าแก้ไขข้อมูล
-                            showAlert('พบสมาชิกแล้ว กำลังไปหน้าแก้ไขข้อมูล...', 'info');
+                            // เป็นสมาชิกและมี password แล้ว - ไปหน้าเข้าสู่ระบบ
+                            showAlert('พบสมาชิกแล้ว กำลังไปหน้าเข้าสู่ระบบ...', 'info');
                             setTimeout(() => {
-                                window.location.href = '/edit_profile?rfid=' + rfid;
+                                window.location.href = '/member_login?rfid=' + rfid;
                             }, 1500);
                         } else {
                             // เป็นสมาชิกแต่ยังไม่มี password - ไปหน้าสมัคร

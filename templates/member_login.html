@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบสมาชิก - PET Detect</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .member-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .member-info h3 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .member-info p {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .back-btn {
+            background: #6c757d;
+            margin-top: 10px;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo"></div>
+        <h1>เข้าสู่ระบบสมาชิก</h1>
+        <p class="subtitle">กรุณาใส่รหัสผ่านเพื่อเข้าสู่ระบบ</p>
+        
+        <div id="member_info" class="member-info" style="display: none;">
+            <h3 id="member_name"></h3>
+            <p id="member_rfid"></p>
+        </div>
+        
+        <div id="alert" class="alert"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="password">รหัสผ่าน *</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <button type="submit" class="btn" id="loginBtn">เข้าสู่ระบบ</button>
+            <button type="button" class="btn back-btn" onclick="goBack()">กลับ</button>
+        </form>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>กำลังเข้าสู่ระบบ...</p>
+        </div>
+    </div>
+
+    <script>
+        // โหลดข้อมูลสมาชิกจาก URL parameter
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rfid = urlParams.get('rfid');
+            
+            if (rfid) {
+                loadMemberInfo(rfid);
+            } else {
+                showAlert('ไม่พบ RFID ID', 'error');
+            }
+        }
+        
+        function loadMemberInfo(rfid) {
+            fetch(`/api/member/${rfid}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const member = data.member;
+                    document.getElementById('member_name').textContent = member.full_name || member.username;
+                    document.getElementById('member_rfid').textContent = `RFID ID: ${member.rfid_id}`;
+                    document.getElementById('member_info').style.display = 'block';
+                } else {
+                    showAlert('ไม่พบข้อมูลสมาชิก', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+            });
+        }
+        
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('loginBtn').disabled = show;
+        }
+        
+        function goBack() {
+            window.location.href = '/';
+        }
+        
+        // Handle form submission
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const urlParams = new URLSearchParams(window.location.search);
+            const rfid = urlParams.get('rfid');
+            
+            if (!password) {
+                showAlert('กรุณาใส่รหัสผ่าน', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            // เรียก API ตรวจสอบรหัสผ่าน
+            fetch('/api/verify_password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    rfid_id: rfid,
+                    password: password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                
+                if (data.success) {
+                    if (data.valid) {
+                        showAlert('เข้าสู่ระบบสำเร็จ!', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/dashboard';
+                        }, 1500);
+                    } else {
+                        showAlert('รหัสผ่านไม่ถูกต้อง', 'error');
+                    }
+                } else {
+                    showAlert('เกิดข้อผิดพลาด: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+            });
+        });
+    </script>
+</body>
+</html>

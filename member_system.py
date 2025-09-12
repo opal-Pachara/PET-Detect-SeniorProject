@@ -425,6 +425,11 @@ def register():
     
     return render_template('register.html')
 
+@app.route('/member_login')
+def member_login():
+    """หน้าเข้าสู่ระบบสมาชิก"""
+    return render_template('member_login.html')
+
 @app.route('/edit_profile')
 def edit_profile():
     """หน้าแก้ไขข้อมูลสมาชิก"""
@@ -570,6 +575,39 @@ def check_member():
             
     except Exception as e:
         logger.error(f"Check member API error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/verify_password', methods=['POST'])
+def verify_password():
+    """API ตรวจสอบรหัสผ่าน"""
+    try:
+        data = request.get_json()
+        rfid_id = data.get('rfid_id')
+        password = data.get('password')
+        
+        if not rfid_id or not password:
+            return jsonify({'success': False, 'message': 'RFID ID and password required'}), 400
+        
+        member = get_member_by_rfid(rfid_id)
+        
+        if not member:
+            return jsonify({'success': False, 'message': 'Member not found'}), 404
+        
+        if not member.get('password_hash'):
+            return jsonify({'success': False, 'message': 'No password set'}), 400
+        
+        # ตรวจสอบรหัสผ่าน
+        import bcrypt
+        password_valid = bcrypt.checkpw(password.encode('utf-8'), member['password_hash'].encode('utf-8'))
+        
+        return jsonify({
+            'success': True,
+            'valid': password_valid,
+            'message': 'Password verified' if password_valid else 'Invalid password'
+        })
+        
+    except Exception as e:
+        logger.error(f"Verify password API error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/update_member', methods=['POST'])
