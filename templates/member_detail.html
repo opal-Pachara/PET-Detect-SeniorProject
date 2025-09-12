@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายละเอียดสมาชิก - PET Detect</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .header h1 {
+            color: #4a5568;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .member-info {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .member-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .info-label {
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 1.1em;
+            color: #2d3748;
+        }
+        .rfid-id {
+            font-family: monospace;
+            background: #edf2f7;
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: #4a5568;
+            font-size: 1.1em;
+        }
+        .score-display {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .score-number {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .score-label {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .history-section {
+            margin-top: 30px;
+        }
+        .history-title {
+            font-size: 1.5em;
+            color: #4a5568;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        th {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        tr:hover {
+            background-color: #f7fafc;
+        }
+        .score-positive {
+            color: #38a169;
+            font-weight: bold;
+        }
+        .score-negative {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .btn-secondary {
+            background: #4a5568;
+        }
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>รายละเอียดสมาชิก</h1>
+            <p>ข้อมูลและประวัติการสแกน</p>
+        </div>
+        
+        <div class="member-info">
+            <div class="member-grid">
+                <div class="info-card">
+                    <div class="info-label">RFID ID</div>
+                    <div class="info-value">
+                        <span class="rfid-id">{{ member.rfid_id }}</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-label">Username</div>
+                    <div class="info-value">{{ member.username }}</div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-label">ชื่อ-นามสกุล</div>
+                    <div class="info-value">{{ member.full_name or 'ยังไม่ได้กรอก' }}</div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-label">อีเมล</div>
+                    <div class="info-value">{{ member.email or 'ยังไม่ได้กรอก' }}</div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-label">เบอร์โทรศัพท์</div>
+                    <div class="info-value">{{ member.phone or 'ยังไม่ได้กรอก' }}</div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-label">สถานะ</div>
+                    <div class="info-value">
+                        <span style="color: {{ 'green' if member.status == 'active' else 'red' }}">
+                            {{ 'ใช้งานได้' if member.status == 'active' else 'ไม่ใช้งาน' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="score-display">
+                <div class="score-number">{{ member.total_score }}</div>
+                <div class="score-label">คะแนนรวมทั้งหมด</div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">{{ member.scan_count }}</div>
+                    <div class="stat-label">จำนวนการสแกน</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ member.created_at.strftime('%d/%m/%Y') if member.created_at else '-' }}</div>
+                    <div class="stat-label">สมัครเมื่อ</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ member.updated_at.strftime('%d/%m/%Y') if member.updated_at else '-' }}</div>
+                    <div class="stat-label">อัพเดทล่าสุด</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="history-section">
+            <h2 class="history-title">ประวัติการสแกน</h2>
+            
+            {% if history %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>วันที่/เวลา</th>
+                            <th>ขวด</th>
+                            <th>กระป๋อง</th>
+                            <th>ฝา</th>
+                            <th>สลาก</th>
+                            <th>คะแนน</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for scan in history %}
+                        <tr>
+                            <td>{{ scan.scan_timestamp.strftime('%d/%m/%Y %H:%M') if scan.scan_timestamp else '-' }}</td>
+                            <td>{{ scan.bottle_count }}</td>
+                            <td>{{ scan.can_count }}</td>
+                            <td>{{ scan.cap_count }}</td>
+                            <td>{{ scan.label_count }}</td>
+                            <td class="{{ 'score-positive' if scan.score > 0 else 'score-negative' if scan.score < 0 else '' }}">
+                                {{ scan.score }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="no-data">
+                <h3>ยังไม่มีประวัติการสแกน</h3>
+                <p>เริ่มสแกน RFID เพื่อสร้างประวัติ</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="/dashboard" class="btn">กลับหน้า Dashboard</a>
+            <a href="/" class="btn btn-secondary">หน้าแรก</a>
+        </div>
+    </div>
+</body>
+</html>

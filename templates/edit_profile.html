@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>สมัครสมาชิก - PET Detect</title>
+    <title>แก้ไขข้อมูลสมาชิก - PET Detect</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -23,6 +23,27 @@
         .header {
             text-align: center;
             margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #4a5568;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        .rfid-display {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .rfid-show {
+            font-family: monospace;
+            font-size: 18px;
+            background: #edf2f7;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
         }
         .form-group {
             margin-bottom: 20px;
@@ -64,22 +85,6 @@
             background: #4a5568;
             margin-top: 10px;
         }
-        .rfid-display {
-            background: #f7fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .rfid-show {
-            font-family: monospace;
-            font-size: 18px;
-            background: #edf2f7;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
         .alert {
             padding: 15px;
             border-radius: 8px;
@@ -95,46 +100,69 @@
             color: #742a2a;
             border: 1px solid #fc8181;
         }
+        .current-info {
+            background: #f0f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .info-value {
+            color: #2d3748;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>สมัครสมาชิก PET Detect</h1>
-            <p>ใช้ RFID ID เป็น username</p>
+            <h1>แก้ไขข้อมูลสมาชิก</h1>
+            <p>อัพเดทข้อมูลส่วนตัวและรหัสผ่าน</p>
         </div>
         
         <div class="rfid-display">
             <h3>RFID ID</h3>
-            <p id="rfid-info">กำลังโหลด RFID ID...</p>
+            <p>ข้อมูลสมาชิกสำหรับ</p>
             <div id="rfid-result" class="rfid-show"></div>
+        </div>
+        
+        <div id="current-info" class="current-info" style="display: none;">
+            <h4>ข้อมูลปัจจุบัน</h4>
+            <div id="current-details"></div>
         </div>
         
         <div id="alert-container"></div>
         
-        <form id="registerForm" onsubmit="submitForm(event)">
+        <form id="editForm" onsubmit="submitForm(event)">
             <div class="form-group">
-                <label for="rfid_id">RFID ID *</label>
-                <input type="text" id="rfid_id" name="rfid_id" required readonly 
-                       placeholder="กำลังโหลด RFID ID...">
+                <label for="username">Username *</label>
+                <input type="text" id="username" name="username" required 
+                       placeholder="ตั้ง username ใหม่">
             </div>
             
             <div class="form-group">
-                <label for="password">รหัสผ่าน *</label>
+                <label for="password">รหัสผ่านใหม่ *</label>
                 <input type="password" id="password" name="password" required 
-                       placeholder="ตั้งรหัสผ่านสำหรับเข้าสู่ระบบ">
+                       placeholder="ตั้งรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)">
             </div>
             
             <div class="form-group">
                 <label for="confirm_password">ยืนยันรหัสผ่าน *</label>
                 <input type="password" id="confirm_password" name="confirm_password" required 
-                       placeholder="ยืนยันรหัสผ่าน">
+                       placeholder="ยืนยันรหัสผ่านใหม่">
             </div>
             
             <div class="form-group">
-                <label for="full_name">ชื่อ-นามสกุล</label>
-                <input type="text" id="full_name" name="full_name" 
-                       placeholder="ใส่ชื่อ-นามสกุล (ไม่จำเป็น)">
+                <label for="full_name">ชื่อ-นามสกุล *</label>
+                <input type="text" id="full_name" name="full_name" required 
+                       placeholder="ใส่ชื่อ-นามสกุล">
             </div>
             
             <div class="form-group">
@@ -144,12 +172,12 @@
             </div>
             
             <div class="form-group">
-                <label for="phone">เบอร์โทรศัพท์</label>
-                <input type="tel" id="phone" name="phone" 
-                       placeholder="ใส่เบอร์โทรศัพท์ (ไม่จำเป็น)">
+                <label for="phone">เบอร์โทรศัพท์ *</label>
+                <input type="tel" id="phone" name="phone" required 
+                       placeholder="ใส่เบอร์โทรศัพท์">
             </div>
             
-            <button type="submit" class="btn">สมัครสมาชิก</button>
+            <button type="submit" class="btn">อัพเดทข้อมูล</button>
             <a href="/" class="btn btn-secondary" style="text-decoration: none; display: block; text-align: center;">
                 กลับหน้าแรก
             </a>
@@ -163,15 +191,53 @@
             const rfid = urlParams.get('rfid');
             
             if (rfid) {
-                document.getElementById('rfid_id').value = rfid;
-                document.getElementById('rfid-result').innerHTML = 'RFID ID: ' + rfid;
-                document.getElementById('rfid-info').textContent = 'RFID ID ที่สแกนแล้ว';
+                document.getElementById('rfid_result').innerHTML = 'RFID ID: ' + rfid;
+                loadMemberInfo(rfid);
             } else {
-                // ถ้าไม่มี RFID ใน URL ให้ใส่เอง
-                document.getElementById('rfid_id').readOnly = false;
-                document.getElementById('rfid_id').placeholder = 'ใส่ RFID ID';
-                document.getElementById('rfid-info').textContent = 'ใส่ RFID ID เอง';
+                showAlert('ไม่พบ RFID ID', 'error');
             }
+        }
+        
+        function loadMemberInfo(rfid) {
+            fetch(`/api/member/${rfid}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const member = data.member;
+                    
+                    // แสดงข้อมูลปัจจุบัน
+                    document.getElementById('current-info').style.display = 'block';
+                    document.getElementById('current-details').innerHTML = `
+                        <div class="info-row">
+                            <span class="info-label">Username:</span>
+                            <span class="info-value">${member.username || 'ยังไม่ได้ตั้ง'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">ชื่อ-นามสกุล:</span>
+                            <span class="info-value">${member.full_name || 'ยังไม่ได้กรอก'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">อีเมล:</span>
+                            <span class="info-value">${member.email || 'ยังไม่ได้กรอก'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">เบอร์โทร:</span>
+                            <span class="info-value">${member.phone || 'ยังไม่ได้กรอก'}</span>
+                        </div>
+                    `;
+                    
+                    // เติมข้อมูลปัจจุบันในฟอร์ม
+                    document.getElementById('username').value = member.username || '';
+                    document.getElementById('full_name').value = member.full_name || '';
+                    document.getElementById('email').value = member.email || '';
+                    document.getElementById('phone').value = member.phone || '';
+                } else {
+                    showAlert('ไม่พบข้อมูลสมาชิก', 'error');
+                }
+            })
+            .catch(error => {
+                showAlert('เกิดข้อผิดพลาด: ' + error.message, 'error');
+            });
         }
         
         function submitForm(event) {
@@ -190,20 +256,19 @@
                 return;
             }
             
+            const urlParams = new URLSearchParams(window.location.search);
+            const rfid = urlParams.get('rfid');
+            
             const formData = {
-                rfid_id: document.getElementById('rfid_id').value,
+                rfid_id: rfid,
+                username: document.getElementById('username').value,
                 password: password,
                 full_name: document.getElementById('full_name').value,
                 email: document.getElementById('email').value,
                 phone: document.getElementById('phone').value
             };
             
-            if (!formData.rfid_id) {
-                showAlert('กรุณาสแกน RFID card ก่อน', 'error');
-                return;
-            }
-            
-            fetch('/register', {
+            fetch('/api/update_member', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -213,13 +278,9 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const action = data.action || 'created';
-                    const message = action === 'created' ? 
-                        'สมัครสมาชิกสำเร็จ! Username: ' + data.member.username :
-                        'อัพเดทข้อมูลสมาชิกสำเร็จ! Username: ' + data.member.username;
-                    showAlert(message, 'success');
+                    showAlert('อัพเดทข้อมูลสำเร็จ!', 'success');
                     setTimeout(() => {
-                        window.location.href = '/';
+                        window.location.href = '/member/' + rfid;
                     }, 2000);
                 } else {
                     showAlert('เกิดข้อผิดพลาด: ' + data.message, 'error');

@@ -122,8 +122,8 @@ def init_database():
         logger.error(f"Database initialization error: {e}")
         return False
 
-def register_member(rfid_id, full_name=None, email=None, phone=None):
-    """สมัครสมาชิกใหม่"""
+def register_member(rfid_id, password=None, full_name=None, email=None, phone=None):
+    """สมัครสมาชิกใหม่หรืออัพเดทข้อมูล"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -132,29 +132,61 @@ def register_member(rfid_id, full_name=None, email=None, phone=None):
         cursor = connection.cursor()
         
         # เช็คว่ามีสมาชิกนี้แล้วหรือไม่
-        cursor.execute("SELECT id FROM members WHERE rfid_id = %s", (rfid_id,))
-        if cursor.fetchone():
+        cursor.execute("SELECT id, username FROM members WHERE rfid_id = %s", (rfid_id,))
+        existing_member = cursor.fetchone()
+        
+        if existing_member:
+            # มีสมาชิกอยู่แล้ว - อัพเดทข้อมูล
+            member_id, username = existing_member
+            
+            # Hash password ถ้ามี
+            password_hash = None
+            if password:
+                import bcrypt
+                password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
+            # อัพเดทข้อมูล
+            update_query = '''
+                UPDATE members 
+                SET full_name = COALESCE(%s, full_name),
+                    email = COALESCE(%s, email),
+                    phone = COALESCE(%s, phone),
+                    password_hash = COALESCE(%s, password_hash),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE rfid_id = %s
+            '''
+            cursor.execute(update_query, (full_name, email, phone, password_hash, rfid_id))
+            
+            connection.commit()
             cursor.close()
             connection.close()
-            return False, "RFID ID already registered"
-        
-        # สร้าง username จาก RFID ID
-        username = f"user_{rfid_id[:8]}"
-        
-        # เพิ่มสมาชิกใหม่
-        insert_query = '''
-            INSERT INTO members (rfid_id, username, full_name, email, phone)
-            VALUES (%s, %s, %s, %s, %s)
-        '''
-        cursor.execute(insert_query, (rfid_id, username, full_name, email, phone))
-        
-        member_id = cursor.lastrowid
-        connection.commit()
-        cursor.close()
-        connection.close()
-        
-        logger.info(f"New member registered: {rfid_id} -> {username}")
-        return True, {"member_id": member_id, "username": username}
+            
+            logger.info(f"Member updated: {rfid_id} -> {username}")
+            return True, {"member_id": member_id, "username": username, "action": "updated"}
+        else:
+            # สร้างสมาชิกใหม่
+            username = f"user_{rfid_id[:8]}"
+            
+            # Hash password ถ้ามี
+            password_hash = None
+            if password:
+                import bcrypt
+                password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
+            # เพิ่มสมาชิกใหม่
+            insert_query = '''
+                INSERT INTO members (rfid_id, username, password_hash, full_name, email, phone)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            '''
+            cursor.execute(insert_query, (rfid_id, username, password_hash, full_name, email, phone))
+            
+            member_id = cursor.lastrowid
+            connection.commit()
+            cursor.close()
+            connection.close()
+            
+            logger.info(f"New member registered: {rfid_id} -> {username}")
+            return True, {"member_id": member_id, "username": username, "action": "created"}
         
     except Error as e:
         logger.error(f"Registration error: {e}")
@@ -179,6 +211,45 @@ def get_member_by_rfid(rfid_id):
     except Error as e:
         logger.error(f"Get member error: {e}")
         return None
+
+def update_member_info(rfid_id, username, password, full_name, email, phone):
+    """อัพเดทข้อมูลสมาชิก"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return False
+        
+        cursor = connection.cursor()
+        
+        # Hash password
+        password_hash = None
+        if password:
+            import bcrypt
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        # อัพเดทข้อมูล
+        update_query = '''
+            UPDATE members 
+            SET username = %s,
+                password_hash = %s,
+                full_name = %s,
+                email = %s,
+                phone = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE rfid_id = %s
+        '''
+        cursor.execute(update_query, (username, password_hash, full_name, email, phone, rfid_id))
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        logger.info(f"Member updated: {rfid_id} -> {username}")
+        return True
+        
+    except Error as e:
+        logger.error(f"Update member error: {e}")
+        return False
 
 def update_member_score(rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path=None):
     """อัพเดทคะแนนสมาชิก"""
@@ -311,6 +382,7 @@ def register():
             data = request.get_json() if request.is_json else request.form
             
             rfid_id = data.get('rfid_id')
+            password = data.get('password')
             full_name = data.get('full_name')
             email = data.get('email')
             phone = data.get('phone')
@@ -318,12 +390,15 @@ def register():
             if not rfid_id:
                 return jsonify({'success': False, 'message': 'RFID ID required'}), 400
             
-            success, result = register_member(rfid_id, full_name, email, phone)
+            success, result = register_member(rfid_id, password, full_name, email, phone)
             
             if success:
+                action = result.get('action', 'created')
+                message = 'Registration successful' if action == 'created' else 'Member information updated'
                 return jsonify({
                     'success': True,
-                    'message': 'Registration successful',
+                    'message': message,
+                    'action': action,
                     'member': result
                 })
             else:
@@ -333,6 +408,11 @@ def register():
             return jsonify({'success': False, 'message': str(e)}), 500
     
     return render_template('register.html')
+
+@app.route('/edit_profile')
+def edit_profile():
+    """หน้าแก้ไขข้อมูลสมาชิก"""
+    return render_template('edit_profile.html')
 
 @app.route('/api/add_score', methods=['POST'])
 def add_score():
@@ -469,6 +549,40 @@ def check_member():
             
     except Exception as e:
         logger.error(f"Check member API error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/update_member', methods=['POST'])
+def update_member():
+    """API อัพเดทข้อมูลสมาชิก"""
+    try:
+        data = request.get_json()
+        
+        rfid_id = data.get('rfid_id')
+        username = data.get('username')
+        password = data.get('password')
+        full_name = data.get('full_name')
+        email = data.get('email')
+        phone = data.get('phone')
+        
+        if not rfid_id:
+            return jsonify({'success': False, 'message': 'RFID ID required'}), 400
+        
+        if not username:
+            return jsonify({'success': False, 'message': 'Username required'}), 400
+        
+        # อัพเดทข้อมูลสมาชิก
+        success = update_member_info(rfid_id, username, password, full_name, email, phone)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Member information updated successfully'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Update failed'}), 500
+            
+    except Exception as e:
+        logger.error(f"Update member API error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/member/<rfid_id>')

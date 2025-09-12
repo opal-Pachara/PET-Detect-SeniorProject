@@ -182,10 +182,10 @@
                 
                 if (data.success) {
                     if (data.is_member) {
-                        // เป็นสมาชิกแล้ว - ไปหน้า dashboard
-                        showAlert('เข้าสู่ระบบสำเร็จ!', 'success');
+                        // เป็นสมาชิกแล้ว - ไปหน้าแก้ไขข้อมูล
+                        showAlert('พบสมาชิกแล้ว กำลังไปหน้าแก้ไขข้อมูล...', 'info');
                         setTimeout(() => {
-                            window.location.href = '/member/' + rfid;
+                            window.location.href = '/edit_profile?rfid=' + rfid;
                         }, 1500);
                     } else {
                         // ยังไม่เป็นสมาชิก - ไปหน้าสมัคร
