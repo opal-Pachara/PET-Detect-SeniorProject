@@ -182,11 +182,19 @@
                 
                 if (data.success) {
                     if (data.is_member) {
-                        // เป็นสมาชิกแล้ว - ไปหน้าแก้ไขข้อมูล
-                        showAlert('พบสมาชิกแล้ว กำลังไปหน้าแก้ไขข้อมูล...', 'info');
-                        setTimeout(() => {
-                            window.location.href = '/edit_profile?rfid=' + rfid;
-                        }, 1500);
+                        if (data.has_password) {
+                            // เป็นสมาชิกและมี password แล้ว - ไปหน้าแก้ไขข้อมูล
+                            showAlert('พบสมาชิกแล้ว กำลังไปหน้าแก้ไขข้อมูล...', 'info');
+                            setTimeout(() => {
+                                window.location.href = '/edit_profile?rfid=' + rfid;
+                            }, 1500);
+                        } else {
+                            // เป็นสมาชิกแต่ยังไม่มี password - ไปหน้าสมัคร
+                            showAlert('พบสมาชิกแต่ยังไม่มีรหัสผ่าน กำลังไปหน้าสมัคร...', 'info');
+                            setTimeout(() => {
+                                window.location.href = '/register?rfid=' + rfid;
+                            }, 1500);
+                        }
                     } else {
                         // ยังไม่เป็นสมาชิก - ไปหน้าสมัคร
                         showAlert('ยังไม่เป็นสมาชิก กำลังไปหน้าสมัคร...', 'info');

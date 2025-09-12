@@ -540,7 +540,7 @@ def leaderboard():
 
 @app.route('/api/check_member', methods=['POST'])
 def check_member():
-    """API ตรวจสอบว่าสมาชิกมีอยู่หรือไม่"""
+    """API ตรวจสอบว่าสมาชิกมีอยู่หรือไม่ และมี password หรือไม่"""
     try:
         data = request.get_json()
         rfid_id = data.get('rfid_id')
@@ -551,15 +551,20 @@ def check_member():
         member = get_member_by_rfid(rfid_id)
         
         if member:
+            # ตรวจสอบว่ามี password หรือไม่
+            has_password = member.get('password_hash') is not None and member.get('password_hash') != ''
+            
             return jsonify({
                 'success': True,
                 'is_member': True,
+                'has_password': has_password,
                 'member': member
             })
         else:
             return jsonify({
                 'success': True,
                 'is_member': False,
+                'has_password': False,
                 'message': 'Not a member yet'
             })
             
