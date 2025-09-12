@@ -633,6 +633,40 @@ def get_member(rfid_id):
         logger.error(f"Get member API error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/member/<rfid_id>/history')
+def get_member_history(rfid_id):
+    """API ประวัติการสแกนของสมาชิก"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+        
+        cursor = connection.cursor(dictionary=True)
+        
+        # ประวัติการสแกน
+        cursor.execute('''
+            SELECT bottle_count, can_count, cap_count, label_count, 
+                   score, scan_timestamp as scan_time, image_path
+            FROM scan_logs 
+            WHERE rfid_id = %s 
+            ORDER BY scan_timestamp DESC
+            LIMIT 50
+        ''', (rfid_id,))
+        
+        history = cursor.fetchall()
+        
+        cursor.close()
+        connection.close()
+        
+        return jsonify({
+            'success': True,
+            'history': history
+        })
+        
+    except Exception as e:
+        logger.error(f"Get member history error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 if __name__ == '__main__':
     print("Starting PET Detect Member System...")
     print("Database: MySQL")
