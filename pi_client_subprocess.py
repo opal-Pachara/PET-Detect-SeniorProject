@@ -170,8 +170,9 @@ if __name__ == "__main__":
                             text = data.get('text', '')
                             print(f"RFID detected - ID: {card_id}")
                             
-                            # เปิด LED เมื่อแตะบัตร RFID
-                            self.led_on(duration=1)
+                            # เปิด LED เมื่อแตะบัตร RFID (ติดค้างจนจบกระบวนการ)
+                            GPIO.output(self.led_pin, GPIO.HIGH)
+                            print("LED ON - จะติดจนจบกระบวนการ")
                             
                             return card_id, text
                     except json.JSONDecodeError:
@@ -266,8 +267,8 @@ if __name__ == "__main__":
             print("ไม่ได้รับผลการวิเคราะห์")
             return
         
-        # เปิด LED เมื่อมีการสแกนสำเร็จ
-        self.led_blink(times=2, interval=0.3)
+        # LED ติดค้างอยู่แล้ว ไม่ต้องกระพริบ
+        # self.led_blink(times=2, interval=0.3)
         
         result = result_data.get('result', {})
         
@@ -396,6 +397,10 @@ if __name__ == "__main__":
         
         # 5. ควบคุม motor
         self.control_stepper(result)
+        
+        # ปิด LED เมื่อจบกระบวนการ
+        GPIO.output(self.led_pin, GPIO.LOW)
+        print("LED OFF - กระบวนการเสร็จสิ้น")
         
         print("การสแกนเสร็จสิ้น!")
         return True
