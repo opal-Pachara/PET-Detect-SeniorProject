@@ -59,9 +59,22 @@ class PETDetectSubprocess:
     def setup_led(self):
         """ตั้งค่า GPIO สำหรับ LED"""
         try:
+            # ตั้งค่า GPIO mode ถ้ายังไม่ได้ตั้ง
+            try:
+                GPIO.setmode(GPIO.BCM)
+            except ValueError:
+                pass  # Mode already set
+            
             GPIO.setup(self.led_pin, GPIO.OUT)
-            GPIO.output(self.led_pin, GPIO.LOW)  # เริ่มต้นปิด LED
-            print(f"LED setup complete - GPIO {self.led_pin}")
+            GPIO.output(self.led_pin, GPIO.LOW)  # บังคับปิด LED
+            print(f"LED setup complete - GPIO {self.led_pin} (OFF)")
+            
+            # ทดสอบ LED 1 ครั้งเพื่อให้แน่ใจว่าทำงาน
+            GPIO.output(self.led_pin, GPIO.HIGH)
+            time.sleep(0.2)
+            GPIO.output(self.led_pin, GPIO.LOW)
+            print("LED test blink complete")
+            
         except Exception as e:
             print(f"LED setup error: {e}")
     
