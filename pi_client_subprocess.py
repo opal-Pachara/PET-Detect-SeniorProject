@@ -13,6 +13,7 @@ import sys
 import subprocess
 import os
 import json
+import RPi.GPIO as GPIO
 from stepper_motor_controller import StepperMotorController
 
 # Setup logging
@@ -27,6 +28,7 @@ class PETDetectSubprocess:
         self.running = True
         self.camera = None
         self.stepper = None
+        self.led_pin = 2   # GPIO 2 สำหรับ LED
         
         # Signal handler
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -37,6 +39,9 @@ class PETDetectSubprocess:
         
         # สร้าง RFID script helper
         self.create_rfid_helper()
+        
+        # Initialize LED
+        self.setup_led()
         
         # Initialize Stepper Motor
         try:
@@ -51,6 +56,38 @@ class PETDetectSubprocess:
             print(f"Stepper Error: {e}")
             self.stepper = None
     
+    def setup_led(self):
+        """ตั้งค่า GPIO สำหรับ LED"""
+        try:
+            GPIO.setup(self.led_pin, GPIO.OUT)
+            GPIO.output(self.led_pin, GPIO.LOW)  # เริ่มต้นปิด LED
+            print(f"LED setup complete - GPIO {self.led_pin}")
+        except Exception as e:
+            print(f"LED setup error: {e}")
+    
+    def led_on(self, duration=2):
+        """เปิด LED เป็นเวลา duration วินาที"""
+        try:
+            GPIO.output(self.led_pin, GPIO.HIGH)
+            print("LED ON")
+            time.sleep(duration)
+            GPIO.output(self.led_pin, GPIO.LOW)
+            print("LED OFF")
+        except Exception as e:
+            print(f"LED control error: {e}")
+    
+    def led_blink(self, times=3, interval=0.5):
+        """กระพริบ LED"""
+        try:
+            for i in range(times):
+                GPIO.output(self.led_pin, GPIO.HIGH)
+                time.sleep(interval)
+                GPIO.output(self.led_pin, GPIO.LOW)
+                time.sleep(interval)
+            print(f"LED blinked {times} times")
+        except Exception as e:
+            print(f"LED blink error: {e}")
+
     def signal_handler(self, signum, frame):
         print("\nกำลังหยุดระบบ...")
         self.running = False
@@ -119,6 +156,10 @@ if __name__ == "__main__":
                             card_id = data.get('card_id')
                             text = data.get('text', '')
                             print(f"RFID detected - ID: {card_id}")
+                            
+                            # เปิด LED เมื่อแตะบัตร RFID
+                            self.led_on(duration=1)
+                            
                             return card_id, text
                     except json.JSONDecodeError:
                         pass
@@ -211,6 +252,9 @@ if __name__ == "__main__":
         if not result_data or not result_data.get('success'):
             print("ไม่ได้รับผลการวิเคราะห์")
             return
+        
+        # เปิด LED เมื่อมีการสแกนสำเร็จ
+        self.led_blink(times=2, interval=0.3)
         
         result = result_data.get('result', {})
         
@@ -378,6 +422,13 @@ if __name__ == "__main__":
                 self.close_camera()
             if self.stepper:
                 self.stepper.cleanup()
+            
+            # ปิด LED ก่อนจบ
+            try:
+                GPIO.output(self.led_pin, GPIO.LOW)
+                print("LED turned OFF")
+            except:
+                pass
             
             # ลบ helper script
             if os.path.exists('rfid_helper.py'):
