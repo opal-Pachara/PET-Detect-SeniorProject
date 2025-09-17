@@ -28,7 +28,7 @@ class PETDetectSubprocess:
         self.running = True
         self.camera = None
         self.stepper = None
-        self.led_pin = 2   # GPIO 2 สำหรับ LED
+        self.led_pin = 2   # GPIO 2 สำหรับ LED (ต่อตรงกับ Resistor)
         
         # Signal handler
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -65,37 +65,37 @@ class PETDetectSubprocess:
             except ValueError:
                 pass  # Mode already set
             
-            GPIO.setup(self.led_pin, GPIO.OUT, initial=GPIO.HIGH)  # เริ่มต้น HIGH (ปิด LED)
-            GPIO.output(self.led_pin, GPIO.HIGH)  # บังคับปิด LED (Active Low)
-            print(f"LED setup complete - GPIO {self.led_pin} (OFF - Active Low)")
+            GPIO.setup(self.led_pin, GPIO.OUT, initial=GPIO.LOW)   # เริ่มต้น LOW (ปิด LED)
+            GPIO.output(self.led_pin, GPIO.LOW)   # บังคับปิด LED (3.3V Direct)
+            print(f"LED setup complete - GPIO {self.led_pin} (OFF - Direct Connection)")
             
             # ทดสอบ LED 1 ครั้งเพื่อให้แน่ใจว่าทำงาน
-            GPIO.output(self.led_pin, GPIO.LOW)   # เปิด LED
+            GPIO.output(self.led_pin, GPIO.HIGH)  # เปิด LED
             time.sleep(0.2)
-            GPIO.output(self.led_pin, GPIO.HIGH)  # ปิด LED
+            GPIO.output(self.led_pin, GPIO.LOW)   # ปิด LED
             print("LED test blink complete")
             
         except Exception as e:
             print(f"LED setup error: {e}")
     
     def led_on(self, duration=2):
-        """เปิด LED เป็นเวลา duration วินาที (Active Low)"""
+        """เปิด LED เป็นเวลา duration วินาที (Direct Connection)"""
         try:
-            GPIO.output(self.led_pin, GPIO.LOW)   # เปิด LED
+            GPIO.output(self.led_pin, GPIO.HIGH)  # เปิด LED
             print("LED ON")
             time.sleep(duration)
-            GPIO.output(self.led_pin, GPIO.HIGH)  # ปิด LED
+            GPIO.output(self.led_pin, GPIO.LOW)   # ปิด LED
             print("LED OFF")
         except Exception as e:
             print(f"LED control error: {e}")
     
     def led_blink(self, times=3, interval=0.5):
-        """กระพริบ LED (Active Low)"""
+        """กระพริบ LED (Direct Connection)"""
         try:
             for i in range(times):
-                GPIO.output(self.led_pin, GPIO.LOW)   # เปิด LED
+                GPIO.output(self.led_pin, GPIO.HIGH)  # เปิด LED
                 time.sleep(interval)
-                GPIO.output(self.led_pin, GPIO.HIGH)  # ปิด LED
+                GPIO.output(self.led_pin, GPIO.LOW)   # ปิด LED
                 time.sleep(interval)
             print(f"LED blinked {times} times")
         except Exception as e:
@@ -436,9 +436,9 @@ if __name__ == "__main__":
             if self.stepper:
                 self.stepper.cleanup()
             
-            # ปิด LED ก่อนจบ (Active Low)
+            # ปิด LED ก่อนจบ (Direct Connection)
             try:
-                GPIO.output(self.led_pin, GPIO.HIGH)  # ปิด LED
+                GPIO.output(self.led_pin, GPIO.LOW)   # ปิด LED
                 print("LED turned OFF")
             except:
                 pass
