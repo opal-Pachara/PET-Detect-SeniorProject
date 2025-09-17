@@ -18,9 +18,9 @@ def turn_off_led():
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(LED_PIN, GPIO.OUT)
         
-        # บังคับปิด LED
-        GPIO.output(LED_PIN, GPIO.LOW)
-        print(f"LED ที่ GPIO {LED_PIN} ปิดแล้ว")
+        # บังคับปิด LED (Active Low - ใช้ HIGH เพื่อปิด)
+        GPIO.output(LED_PIN, GPIO.HIGH)
+        print(f"LED ที่ GPIO {LED_PIN} ปิดแล้ว (Active Low)")
         
         time.sleep(0.5)
         
