@@ -43,6 +43,8 @@ try:
     # Try loading custom model first (YOLOv11n)
     model = YOLO('model-yolov5s/best.pt')
     logger.info("Model loaded successfully from model-yolov5s/best.pt (YOLOv11n)")
+    logger.info(f"Model classes: {model.names}")
+    logger.info(f"Model classes count: {len(model.names)}")
 except Exception as e:
     logger.error(f"Failed to load custom model: {e}")
     # Fallback to standard YOLOv11n (ultralytics >= 8.3.0)
@@ -81,11 +83,22 @@ def ping():
 @app.route('/api/model-info', methods=['GET'])
 def model_info():
     """Model information endpoint"""
-    return jsonify({
-        'model_path': 'model-yolov5s/best.pt',
-        'model_loaded': model is not None,
-        'model_status': 'Loaded' if model else 'Failed'
-    })
+    if model:
+        return jsonify({
+            'model_path': 'model-yolov5s/best.pt',
+            'model_loaded': True,
+            'model_status': 'Loaded',
+            'model_classes': list(model.names.values()),
+            'model_classes_dict': dict(model.names),
+            'model_classes_count': len(model.names)
+        })
+    else:
+        return jsonify({
+            'model_path': 'model-yolov5s/best.pt',
+            'model_loaded': False,
+            'model_status': 'Failed',
+            'error': 'Model not loaded'
+        })
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
