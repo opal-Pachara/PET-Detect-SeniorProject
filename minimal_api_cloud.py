@@ -21,6 +21,10 @@ app = Flask(__name__)
 
 # Load model
 try:
+    # Fix for PyTorch 2.6 weights_only issue
+    import torch.serialization
+    torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
+    
     model = YOLO('model-yolov5s/best.pt')
     logger.info("Model loaded successfully from model-yolov5s/best.pt")
 except Exception as e:
@@ -122,8 +126,9 @@ def scan():
         }), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 10000))
     print(f"Starting Minimal PET Detect API...")
+    print(f"Port: {port}")
     print(f"Model path: model-yolov5s/best.pt")
     print(f"Model status: {'Loaded' if model else 'Failed'}")
     print("Available endpoints:")
