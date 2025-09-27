@@ -3,7 +3,8 @@
 Minimal PET Detect API - Cloud Version
 สำหรับ Deploy ขึ้น Cloud (Render, Railway, etc.)
 Custom YOLOv11n Model: model-yolov5s/best.pt
-Fallback: Standard YOLOv11n (yolov11n.pt)
+Fallback 1: Standard YOLOv11n (yolo11n.pt) - ultralytics >= 8.3.0
+Fallback 2: Standard YOLOv8n (yolov8n.pt)
 """
 
 import logging
@@ -31,7 +32,9 @@ try:
         'ultralytics.nn.modules.block.C3',
         'ultralytics.nn.modules.block.SPPF',
         'ultralytics.nn.modules.conv.Conv',
-        'ultralytics.nn.modules.head.Detect'
+        'ultralytics.nn.modules.head.Detect',
+        'ultralytics.nn.modules.block.C2f',
+        'ultralytics.nn.modules.block.RepConv'
     ])
     
     # Try loading custom model first (YOLOv11n)
@@ -39,13 +42,19 @@ try:
     logger.info("Model loaded successfully from model-yolov5s/best.pt (YOLOv11n)")
 except Exception as e:
     logger.error(f"Failed to load custom model: {e}")
-    # Fallback to standard YOLOv11n
+    # Fallback to standard YOLOv11n (ultralytics >= 8.3.0)
     try:
-        model = YOLO('yolov11n.pt')
+        model = YOLO('yolo11n.pt')
         logger.info("Fallback to standard YOLOv11n model")
     except Exception as e2:
         logger.error(f"Failed to load standard YOLOv11n model: {e2}")
-        model = None
+        # Final fallback to YOLOv8n
+        try:
+            model = YOLO('yolov8n.pt')
+            logger.info("Final fallback to standard YOLOv8n model")
+        except Exception as e3:
+            logger.error(f"Failed to load YOLOv8n model: {e3}")
+            model = None
 
 @app.route('/api/ping', methods=['GET'])
 def ping():
