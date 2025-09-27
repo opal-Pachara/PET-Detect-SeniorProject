@@ -56,6 +56,16 @@ except Exception as e:
             logger.error(f"Failed to load YOLOv8n model: {e3}")
             model = None
 
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint"""
+    return jsonify({
+        'status': 'ok',
+        'message': 'PET Detect API is running',
+        'model_loaded': model is not None,
+        'endpoints': ['/api/ping', '/api/scan', '/api/model-info']
+    })
+
 @app.route('/api/ping', methods=['GET'])
 def ping():
     """Health check endpoint"""
@@ -162,5 +172,6 @@ if __name__ == '__main__':
     print("   - GET /api/model-info - Model information")
     print("Press Ctrl+C to stop")
     
-    # Use gunicorn for production
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # Use gunicorn for production (don't run Flask directly on cloud)
+    if __name__ == '__main__':
+        app.run(host='0.0.0.0', port=port, debug=False)

@@ -299,19 +299,30 @@ if __name__ == "__main__":
                 'image_path': 'captured_image.jpg'
             }
             
-            # ส่งไปยัง Member System API (บน Windows)
-            web_response = self.session.post(
-                'http://192.168.1.31:9000/api/add_score',  # เปลี่ยน port เป็น 9000
-                json=score_data,
-                timeout=5
-            )
-            
-            if web_response.status_code == 200:
-                print("บันทึกคะแนนลงเว็บสำเร็จ")
-                logger.info(f"Score saved to web: Card {card_id}, Score {result.get('score', 0)}")
-            else:
-                print(f"ไม่สามารถบันทึกคะแนนลงเว็บได้: {web_response.status_code}")
-                
+            # ส่งไปยัง Member System API (บน Cloud) - พร้อม retry
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    web_response = self.session.post(
+                        'https://pet-detect-seniorproject-1.onrender.com/api/add_score',  # Cloud Web Score System
+                        json=score_data,
+                        timeout=30  # เพิ่ม timeout สำหรับ cloud
+                    )
+                    
+                    if web_response.status_code == 200:
+                        print("บันทึกคะแนนลงเว็บสำเร็จ")
+                        logger.info(f"Score saved to web: Card {card_id}, Score {result.get('score', 0)}")
+                        return  # สำเร็จแล้ว
+                    else:
+                        print(f"ไม่สามารถบันทึกคะแนนลงเว็บได้: {web_response.status_code} (attempt {attempt + 1})")
+                        
+                except Exception as e:
+                    print(f"Web score save error (attempt {attempt + 1}): {e}")
+                    logger.error(f"Web score save error (attempt {attempt + 1}): {e}")
+                    
+                if attempt < max_retries - 1:
+                    time.sleep(2)  # รอ 2 วินาทีก่อนลองใหม่
+                    
         except Exception as e:
             print(f"Web score save error: {e}")
             logger.debug(f"Web score save failed: {e}")
