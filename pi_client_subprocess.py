@@ -28,7 +28,7 @@ class PETDetectSubprocess:
         self.running = True
         self.camera = None
         self.stepper = None
-        self.led_pin = 2   # GPIO 2 สำหรับ LED (ต่อตรงกับ Resistor)
+        self.led_pin = 4   # GPIO 4 สำหรับ LED (ต่อกับ Relay)
         
         # Signal handler
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -66,8 +66,8 @@ class PETDetectSubprocess:
                 pass  # Mode already set
             
             GPIO.setup(self.led_pin, GPIO.OUT, initial=GPIO.LOW)   # เริ่มต้น LOW (ปิด LED)
-            GPIO.output(self.led_pin, GPIO.LOW)   # บังคับปิด LED (3.3V Direct)
-            print(f"LED setup complete - GPIO {self.led_pin} (OFF - No Resistor for Brightness)")
+            GPIO.output(self.led_pin, GPIO.LOW)   # บังคับปิด LED (Relay Control)
+            print(f"LED setup complete - GPIO {self.led_pin} (OFF - Relay Control)")
             
             # ทดสอบ LED 1 ครั้งเพื่อให้แน่ใจว่าทำงาน
             GPIO.output(self.led_pin, GPIO.HIGH)  # เปิด LED
