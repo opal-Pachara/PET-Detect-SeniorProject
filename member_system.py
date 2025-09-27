@@ -728,7 +728,9 @@ if __name__ == '__main__':
     # Initialize database
     if init_database():
         print("Database ready!")
-        app.run(host='0.0.0.0', port=9000, debug=False)
+        # Get port from environment variable (for cloud deployment)
+        port = int(os.environ.get('PORT', 9000))
+        app.run(host='0.0.0.0', port=port, debug=False)
     else:
         print("Database initialization failed!")
         print("Please check MySQL server and configuration")

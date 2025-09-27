@@ -1,0 +1,10 @@
+# Database Configuration for Cloud
+DB_HOST=your-database-host.com
+DB_PORT=3306
+DB_NAME=pet_detect_db
+DB_USER=your-username
+DB_PASSWORD=your-password
+
+# Flask Configuration
+FLASK_ENV=production
+SECRET_KEY=your-secret-key-here

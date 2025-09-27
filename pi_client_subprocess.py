@@ -67,7 +67,7 @@ class PETDetectSubprocess:
             
             GPIO.setup(self.led_pin, GPIO.OUT, initial=GPIO.LOW)   # เริ่มต้น LOW (ปิด LED)
             GPIO.output(self.led_pin, GPIO.LOW)   # บังคับปิด LED (3.3V Direct)
-            print(f"LED setup complete - GPIO {self.led_pin} (OFF - Direct Connection)")
+            print(f"LED setup complete - GPIO {self.led_pin} (OFF - No Resistor for Brightness)")
             
             # ทดสอบ LED 1 ครั้งเพื่อให้แน่ใจว่าทำงาน
             GPIO.output(self.led_pin, GPIO.HIGH)  # เปิด LED
