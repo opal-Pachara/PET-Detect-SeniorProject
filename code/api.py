@@ -21,8 +21,8 @@ DB_CONFIG = {
     'password': os.environ.get('DB_PASSWORD', 'password')
 }
 
-# Load YOLOv11n model once at startup (use ultralytics)
-model = YOLO('model-yolov5s/best.pt')
+# Load YOLOv11n custom model once at startup (use ultralytics)
+model = YOLO('model-yolov5s/best.pt')  # Custom YOLOv11n trained model
 
 def get_db_connection():
     """สร้างการเชื่อมต่อฐานข้อมูล PostgreSQL"""

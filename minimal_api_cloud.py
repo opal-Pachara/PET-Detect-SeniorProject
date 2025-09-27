@@ -2,6 +2,8 @@
 """
 Minimal PET Detect API - Cloud Version
 สำหรับ Deploy ขึ้น Cloud (Render, Railway, etc.)
+Custom YOLOv11n Model: model-yolov5s/best.pt
+Fallback: Standard YOLOv11n (yolov11n.pt)
 """
 
 import logging
@@ -21,17 +23,28 @@ app = Flask(__name__)
 
 # Load model
 try:
-    # Try loading custom model first
+    # Fix PyTorch 2.6 weights_only issue
+    import torch
+    torch.serialization.add_safe_globals([
+        'ultralytics.nn.tasks.DetectionModel',
+        'ultralytics.nn.modules.block.Bottleneck',
+        'ultralytics.nn.modules.block.C3',
+        'ultralytics.nn.modules.block.SPPF',
+        'ultralytics.nn.modules.conv.Conv',
+        'ultralytics.nn.modules.head.Detect'
+    ])
+    
+    # Try loading custom model first (YOLOv11n)
     model = YOLO('model-yolov5s/best.pt')
-    logger.info("Model loaded successfully from model-yolov5s/best.pt")
+    logger.info("Model loaded successfully from model-yolov5s/best.pt (YOLOv11n)")
 except Exception as e:
     logger.error(f"Failed to load custom model: {e}")
-    # Fallback to standard YOLOv5s
+    # Fallback to standard YOLOv11n
     try:
-        model = YOLO('yolov5s.pt')
-        logger.info("Fallback to standard YOLOv5s model")
+        model = YOLO('yolov11n.pt')
+        logger.info("Fallback to standard YOLOv11n model")
     except Exception as e2:
-        logger.error(f"Failed to load standard model: {e2}")
+        logger.error(f"Failed to load standard YOLOv11n model: {e2}")
         model = None
 
 @app.route('/api/ping', methods=['GET'])

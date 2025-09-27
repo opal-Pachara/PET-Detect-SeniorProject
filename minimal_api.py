@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-# Load YOLO model
-MODEL_PATH = 'model-yolov5s/best.pt'
+# Load YOLO model (Custom YOLOv11n)
+MODEL_PATH = 'model-yolov5s/best.pt'  # Custom YOLOv11n trained model
 try:
     if os.path.exists(MODEL_PATH):
         model = YOLO(MODEL_PATH)
