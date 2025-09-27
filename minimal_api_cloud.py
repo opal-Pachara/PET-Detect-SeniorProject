@@ -21,15 +21,18 @@ app = Flask(__name__)
 
 # Load model
 try:
-    # Fix for PyTorch 2.6 weights_only issue
-    import torch.serialization
-    torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
-    
+    # Try loading custom model first
     model = YOLO('model-yolov5s/best.pt')
     logger.info("Model loaded successfully from model-yolov5s/best.pt")
 except Exception as e:
-    logger.error(f"Failed to load model: {e}")
-    model = None
+    logger.error(f"Failed to load custom model: {e}")
+    # Fallback to standard YOLOv5s
+    try:
+        model = YOLO('yolov5s.pt')
+        logger.info("Fallback to standard YOLOv5s model")
+    except Exception as e2:
+        logger.error(f"Failed to load standard model: {e2}")
+        model = None
 
 @app.route('/api/ping', methods=['GET'])
 def ping():
@@ -137,4 +140,5 @@ if __name__ == '__main__':
     print("   - GET /api/model-info - Model information")
     print("Press Ctrl+C to stop")
     
+    # Use gunicorn for production
     app.run(host='0.0.0.0', port=port, debug=False)
