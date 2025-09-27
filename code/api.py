@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
-from flask_pymongo import PyMongo
 from flask_cors import CORS
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import os
 # import torch  # ไม่ใช้ torch.hub แล้ว
 from PIL import Image
 import numpy as np
@@ -10,12 +12,26 @@ from ultralytics import YOLO  # เพิ่มบรรทัดนี้
 app = Flask(__name__)
 CORS(app)
 
-# MongoDB Atlas config (ใช้แบบเดียวกับ db.py)
-app.config["MONGO_URI"] = "mongodb+srv://s6404062636412:0606@pet.tacvdh9.mongodb.net/pet?retryWrites=true&w=majority&appName=pet"
-mongo = PyMongo(app)
+# PostgreSQL configuration
+DB_CONFIG = {
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'port': os.environ.get('DB_PORT', '5432'),
+    'database': os.environ.get('DB_NAME', 'pet_detect_db'),
+    'user': os.environ.get('DB_USER', 'postgres'),
+    'password': os.environ.get('DB_PASSWORD', 'password')
+}
 
 # Load YOLOv11n model once at startup (use ultralytics)
 model = YOLO('model-yolov5s/best.pt')
+
+def get_db_connection():
+    """สร้างการเชื่อมต่อฐานข้อมูล PostgreSQL"""
+    try:
+        connection = psycopg2.connect(**DB_CONFIG)
+        return connection
+    except psycopg2.Error as e:
+        print(f"Database connection error: {e}")
+        return None
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -24,11 +40,26 @@ def register():
     password = data.get('password')
     if not username or not password:
         return jsonify({'success': False, 'message': 'Missing username or password'}), 400
-    if mongo.db.users.find_one({'username': username}):  # type: ignore
-        return jsonify({'success': False, 'message': 'Username already exists'}), 409
-    hashed_pw = generate_password_hash(password)
-    mongo.db.users.insert_one({'username': username, 'password': hashed_pw})  # type: ignore
-    return jsonify({'success': True, 'message': 'User registered successfully'})
+    
+    connection = get_db_connection()
+    if not connection:
+        return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+    
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT id FROM members WHERE username = %s", (username,))
+        if cursor.fetchone():
+            return jsonify({'success': False, 'message': 'Username already exists'}), 409
+        
+        hashed_pw = generate_password_hash(password)
+        cursor.execute("INSERT INTO members (username, password_hash) VALUES (%s, %s)", (username, hashed_pw))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return jsonify({'success': True, 'message': 'User registered successfully'})
+    except psycopg2.Error as e:
+        return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -37,11 +68,24 @@ def login():
     password = data.get('password')
     if not username or not password:
         return jsonify({'success': False, 'message': 'Missing username or password'}), 400
-    user = mongo.db.users.find_one({'username': username})  # type: ignore
-    if user and check_password_hash(user['password'], password):
-        return jsonify({'success': True, 'message': 'Login successful'})
-    else:
-        return jsonify({'success': False, 'message': 'Invalid username or password'}), 401
+    
+    connection = get_db_connection()
+    if not connection:
+        return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+    
+    try:
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM members WHERE username = %s", (username,))
+        user = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        
+        if user and check_password_hash(user['password_hash'], password):
+            return jsonify({'success': True, 'message': 'Login successful'})
+        else:
+            return jsonify({'success': False, 'message': 'Invalid username or password'}), 401
+    except psycopg2.Error as e:
+        return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
 
 @app.route('/api/scan', methods=['POST'])
 def scan():

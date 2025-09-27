@@ -20,7 +20,7 @@ from stepper_motor_controller import StepperMotorController
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-API_URL = "http://192.168.1.31:5000"
+API_URL = "https://pet-detect-ai-api.onrender.com"  # AI API บน Cloud
 
 class PETDetectSubprocess:
     def __init__(self, api_url=API_URL):
