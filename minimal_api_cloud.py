@@ -150,19 +150,21 @@ def scan():
                     confidence = float(box.conf[0])
                     
                     logger.info(f"Detection {i+1}: class='{class_name}' (id={class_id}), confidence={confidence:.3f}")
+                    logger.info(f"  Class name type: {type(class_name)}, value: '{class_name}'")
                     
                     # ลด threshold เป็น 0.1 เพื่อดู detections ทั้งหมด
                     if confidence > 0.1:
-                        if class_name in ["bottle", "ขวด"]:
+                        # แก้ไข class names ให้ตรงกับ model
+                        if class_name in ["Bottle", "bottle", "ขวด"]:
                             bottles += 1
                             logger.info(f"✅ Counted bottle: {class_name}")
-                        elif class_name in ["cap", "ฝา"]:
+                        elif class_name in ["Cap", "cap", "ฝา"]:
                             caps += 1
                             logger.info(f"✅ Counted cap: {class_name}")
-                        elif class_name in ["label", "ฉลาก"]:
+                        elif class_name in ["Label", "label", "ฉลาก"]:
                             labels += 1
                             logger.info(f"✅ Counted label: {class_name}")
-                        elif class_name in ["can", "กระป๋อง"]:
+                        elif class_name in ["Can", "can", "กระป๋อง"]:
                             cans += 1
                             logger.info(f"✅ Counted can: {class_name}")
                         else:
