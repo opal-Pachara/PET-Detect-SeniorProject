@@ -289,15 +289,20 @@ if __name__ == "__main__":
     def save_score_to_web(self, card_id, result):
         """บันทึกคะแนนไปยังเว็บ database"""
         try:
+            # แปลง detections เป็น field ที่ถูกต้อง
+            detections = result.get('detections', {})
             score_data = {
                 'card_id': str(card_id),
-                'bottle_count': result.get('bottle_count', 0),
-                'can_count': result.get('can_count', 0),
-                'cap_count': result.get('cap_count', 0),
-                'label_count': result.get('label_count', 0),
+                'bottle_count': detections.get('bottles', 0),
+                'can_count': detections.get('cans', 0),
+                'cap_count': detections.get('caps', 0),
+                'label_count': detections.get('labels', 0),
                 'score': result.get('score', 0),
                 'image_path': 'captured_image.jpg'
             }
+            
+            print(f"📊 Score Data: {score_data}")
+            logger.info(f"Score data to send: {score_data}")
             
             # ส่งไปยัง Member System API (บน Cloud) - พร้อม retry
             max_retries = 3

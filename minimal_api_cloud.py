@@ -125,6 +125,7 @@ def scan():
         
         # Debug: Log model classes
         logger.info(f"Model classes: {model.names}")
+        logger.info(f"Model classes list: {list(model.names.values())}")
         
         for result in results:
             logger.info(f"Number of detections: {len(result.boxes) if result.boxes is not None else 0}")
@@ -137,15 +138,22 @@ def scan():
                     
                     logger.info(f"Detection {i+1}: class='{class_name}' (id={class_id}), confidence={confidence:.3f}")
                     
-                    if confidence > 0.3:  # ลด threshold เป็น 0.3
+                    # ลด threshold เป็น 0.1 เพื่อดู detections ทั้งหมด
+                    if confidence > 0.1:
                         if class_name in ["bottle", "ขวด"]:
                             bottles += 1
+                            logger.info(f"✅ Counted bottle: {class_name}")
                         elif class_name in ["cap", "ฝา"]:
                             caps += 1
+                            logger.info(f"✅ Counted cap: {class_name}")
                         elif class_name in ["label", "ฉลาก"]:
                             labels += 1
+                            logger.info(f"✅ Counted label: {class_name}")
                         elif class_name in ["can", "กระป๋อง"]:
                             cans += 1
+                            logger.info(f"✅ Counted can: {class_name}")
+                        else:
+                            logger.info(f"❓ Unknown class: {class_name} (confidence: {confidence:.3f})")
                     else:
                         logger.info(f"Low confidence detection: {class_name} ({confidence:.3f})")
         
@@ -164,11 +172,20 @@ def scan():
                 'labels': labels,
                 'cans': cans
             },
+            # เพิ่ม format ที่ Pi Client คาดหวัง
+            'bottle_count': bottles,
+            'cap_count': caps,
+            'label_count': labels,
+            'can_count': cans,
             'debug_info': {
                 'model_classes': list(model.names.values()),
+                'model_classes_dict': dict(model.names),
                 'total_detections': len(result.boxes) if result.boxes is not None else 0,
-                'confidence_threshold': 0.3
-            }
+                'confidence_threshold': 0.1,
+                'image_shape': image_array.shape,
+                'processing_time': 'N/A'
+            },
+            'message': f'พบ {bottles + caps + labels + cans} objects: ขวด {bottles}, ฝา {caps}, ฉลาก {labels}, กระป๋อง {cans}'
         })
         
     except Exception as e:
