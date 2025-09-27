@@ -11,6 +11,9 @@ import logging
 import os
 from flask import Flask, request, jsonify
 from ultralytics import YOLO
+
+# Set YOLO config directory to avoid warning
+os.environ['YOLO_CONFIG_DIR'] = '/tmp/Ultralytics'
 import cv2
 import numpy as np
 from PIL import Image
@@ -120,21 +123,31 @@ def scan():
         labels = 0
         cans = 0
         
+        # Debug: Log model classes
+        logger.info(f"Model classes: {model.names}")
+        
         for result in results:
-            for box in result.boxes:
-                class_id = int(box.cls[0])
-                class_name = result.names[class_id]
-                confidence = float(box.conf[0])
-                
-                if confidence > 0.5:  # Confidence threshold
-                    if class_name in ["bottle", "ขวด"]:
-                        bottles += 1
-                    elif class_name in ["cap", "ฝา"]:
-                        caps += 1
-                    elif class_name in ["label", "ฉลาก"]:
-                        labels += 1
-                    elif class_name in ["can", "กระป๋อง"]:
-                        cans += 1
+            logger.info(f"Number of detections: {len(result.boxes) if result.boxes is not None else 0}")
+            
+            if result.boxes is not None:
+                for i, box in enumerate(result.boxes):
+                    class_id = int(box.cls[0])
+                    class_name = result.names[class_id]
+                    confidence = float(box.conf[0])
+                    
+                    logger.info(f"Detection {i+1}: class='{class_name}' (id={class_id}), confidence={confidence:.3f}")
+                    
+                    if confidence > 0.3:  # ลด threshold เป็น 0.3
+                        if class_name in ["bottle", "ขวด"]:
+                            bottles += 1
+                        elif class_name in ["cap", "ฝา"]:
+                            caps += 1
+                        elif class_name in ["label", "ฉลาก"]:
+                            labels += 1
+                        elif class_name in ["can", "กระป๋อง"]:
+                            cans += 1
+                    else:
+                        logger.info(f"Low confidence detection: {class_name} ({confidence:.3f})")
         
         # Calculate score
         score = (bottles * 50) + (caps * 10) + (labels * 5) + (cans * 30)
@@ -150,6 +163,11 @@ def scan():
                 'caps': caps,
                 'labels': labels,
                 'cans': cans
+            },
+            'debug_info': {
+                'model_classes': list(model.names.values()),
+                'total_detections': len(result.boxes) if result.boxes is not None else 0,
+                'confidence_threshold': 0.3
             }
         })
         
