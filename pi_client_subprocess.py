@@ -100,6 +100,14 @@ class PETDetectSubprocess:
             print(f"LED blinked {times} times")
         except Exception as e:
             print(f"LED blink error: {e}")
+    
+    def led_off(self):
+        """ปิด LED"""
+        try:
+            GPIO.output(self.led_pin, GPIO.LOW)
+            print("LED OFF - Manual Control")
+        except Exception as e:
+            print(f"LED OFF error: {e}")
 
     def signal_handler(self, signum, frame):
         print("\nกำลังหยุดระบบ...")
@@ -340,12 +348,14 @@ if __name__ == "__main__":
         if not result_data or not result_data.get('success'):
             return
         
-        result = result_data.get('result', {})
-        bottle_count = result.get('bottle_count', 0)
-        can_count = result.get('can_count', 0)
+        # ใช้ result_data โดยตรง ไม่ต้อง get('result')
+        bottle_count = result_data.get('bottle_count', 0)
+        can_count = result_data.get('can_count', 0)
         
         print("\nการควบคุม Stepper Motor:")
         print("=" * 35)
+        print(f"🔍 Debug - bottle_count: {bottle_count}, can_count: {can_count}")
+        print(f"🔍 Debug - result_data keys: {list(result_data.keys())}")
         
         try:
             if bottle_count > 0 and can_count > 0:
@@ -432,6 +442,9 @@ if __name__ == "__main__":
             try:
                 scan_count += 1
                 print(f"\nรอบที่ {scan_count}:")
+                
+                # ปิด LED ก่อนเริ่มรอบใหม่
+                self.led_off()
                 
                 success = self.run_single_scan()
                 
