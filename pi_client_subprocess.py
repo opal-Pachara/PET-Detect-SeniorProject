@@ -16,6 +16,14 @@ import json
 import RPi.GPIO as GPIO
 from stepper_motor_controller import StepperMotorController
 
+# Import LCD Display
+try:
+    from RPLCD.i2c import CharLCD
+    LCD_AVAILABLE = True
+except ImportError:
+    LCD_AVAILABLE = False
+    print("⚠️ RPLCD not available. LCD disabled.")
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -29,6 +37,7 @@ class PETDetectSubprocess:
         self.camera = None
         self.stepper = None
         self.led_pin = 4   # GPIO 4 สำหรับ LED (ต่อกับ Relay)
+        self.lcd = None    # LCD Display
         
         # Signal handler
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -78,6 +87,27 @@ class PETDetectSubprocess:
         except Exception as e:
             print(f"LED setup error: {e}")
     
+    def setup_lcd(self):
+        """ตั้งค่า LCD Display"""
+        if LCD_AVAILABLE:
+            try:
+                self.lcd = CharLCD('PCF8574', 0x27)  # Address 0x27
+                self.lcd.clear()
+                self.lcd.write_string("PET Detect System")
+                self.lcd.cursor_pos = (1, 0)
+                self.lcd.write_string("Initializing...")
+                print("LCD Display initialized")
+                time.sleep(2)
+                self.lcd.clear()
+                self.lcd.write_string("กรุณาแตะบัตร")
+                self.lcd.cursor_pos = (1, 0)
+                self.lcd.write_string("Waiting...")
+            except Exception as e:
+                print(f"LCD setup error: {e}")
+                self.lcd = None
+        else:
+            print("LCD disabled - RPLCD not installed")
+    
     def led_on(self, duration=2):
         """เปิด LED เป็นเวลา duration วินาที (Direct Connection)"""
         try:
@@ -108,6 +138,61 @@ class PETDetectSubprocess:
             print("LED OFF - Manual Control")
         except Exception as e:
             print(f"LED OFF error: {e}")
+    
+    def lcd_show_waiting(self):
+        """แสดงสถานะรอการแตะบัตร"""
+        if self.lcd:
+            try:
+                self.lcd.clear()
+                self.lcd.write_string("กรุณาแตะบัตร")
+                self.lcd.cursor_pos = (1, 0)
+                self.lcd.write_string("Waiting...")
+            except Exception as e:
+                print(f"LCD display error: {e}")
+    
+    def lcd_show_rfid(self, card_id):
+        """แสดงเลข RFID ของบัตร"""
+        if self.lcd:
+            try:
+                self.lcd.clear()
+                self.lcd.write_string("RFID Card:")
+                self.lcd.cursor_pos = (1, 0)
+                self.lcd.write_string(f"{card_id}")
+            except Exception as e:
+                print(f"LCD display error: {e}")
+    
+    def lcd_show_scanning(self):
+        """แสดงสถานะกำลังสแกน"""
+        if self.lcd:
+            try:
+                self.lcd.clear()
+                self.lcd.write_string("กำลังสแกน...")
+                self.lcd.cursor_pos = (1, 0)
+                self.lcd.write_string("Processing...")
+            except Exception as e:
+                print(f"LCD display error: {e}")
+    
+    def lcd_show_results(self, bottle_count, cap_count, label_count, can_count):
+        """แสดงผลการตรวจจับ"""
+        if self.lcd:
+            try:
+                self.lcd.clear()
+                self.lcd.write_string(f"B:{bottle_count} C:{cap_count}")
+                self.lcd.cursor_pos = (1, 0)
+                self.lcd.write_string(f"L:{label_count} K:{can_count}")
+            except Exception as e:
+                print(f"LCD display error: {e}")
+    
+    def lcd_show_score(self, card_id, score):
+        """แสดงคะแนนรวมพร้อมเลขบัตร RFID"""
+        if self.lcd:
+            try:
+                self.lcd.clear()
+                self.lcd.write_string(f"Card: {card_id}")
+                self.lcd.cursor_pos = (1, 0)
+                self.lcd.write_string(f"Score: {score}")
+            except Exception as e:
+                print(f"LCD display error: {e}")
 
     def signal_handler(self, signum, frame):
         print("\nกำลังหยุดระบบ...")
@@ -280,15 +365,29 @@ if __name__ == "__main__":
         # self.led_blink(times=2, interval=0.3)
         
         # ใช้ result_data โดยตรง ไม่ต้อง get('result')
+        bottle_count = result_data.get('bottle_count', 0)
+        can_count = result_data.get('can_count', 0)
+        cap_count = result_data.get('cap_count', 0)
+        label_count = result_data.get('label_count', 0)
+        score = result_data.get('score', 0)
+        
         print("\nการวิเคราะห์ AI:")
         print("=" * 40)
-        print(f"ขวด (Bottles): {result_data.get('bottle_count', 0)}")
-        print(f"กระป๋อง (Cans): {result_data.get('can_count', 0)}")
-        print(f"ฝา (Caps): {result_data.get('cap_count', 0)}")
-        print(f"สลาก (Labels): {result_data.get('label_count', 0)}")
+        print(f"ขวด (Bottles): {bottle_count}")
+        print(f"กระป๋อง (Cans): {can_count}")
+        print(f"ฝา (Caps): {cap_count}")
+        print(f"สลาก (Labels): {label_count}")
         print(f"จำนวนรวม: {result_data.get('debug_info', {}).get('total_detections', 0)}")
-        print(f"คะแนน: {result_data.get('score', 0)}")
+        print(f"คะแนน: {score}")
         print("=" * 40)
+        
+        # แสดงผลการตรวจจับบน LCD
+        self.lcd_show_results(bottle_count, cap_count, label_count, can_count)
+        time.sleep(3)
+        
+        # แสดงคะแนนรวมพร้อมเลขบัตร RFID
+        if card_id:
+            self.lcd_show_score(card_id, score)
         
         # บันทึกคะแนนไปยังเว็บ (ถ้ามี card_id)
         if card_id:
@@ -396,11 +495,20 @@ if __name__ == "__main__":
         print("\nเริ่มกระบวนการสแกน PET")
         print("=" * 50)
         
+        # แสดงสถานะรอการแตะบัตร
+        self.lcd_show_waiting()
+        
         # 1. สแกน RFID ผ่าน subprocess
         card_id, text = self.read_rfid_subprocess(timeout=30)
         if not card_id:
             print("ไม่พบบัตร RFID")
             return False
+        
+        # แสดงเลข RFID ของบัตร
+        self.lcd_show_rfid(card_id)
+        
+        # แสดงสถานะกำลังสแกน
+        self.lcd_show_scanning()
         
         # 2. เปิดกล้องและถ่ายภาพ
         if not self.open_camera():
@@ -436,6 +544,9 @@ if __name__ == "__main__":
         print("กด Ctrl+C เพื่อหยุด")
         print("=" * 60)
         
+        # ตั้งค่า LCD
+        self.setup_lcd()
+        
         scan_count = 0
         
         while self.running:
@@ -445,6 +556,9 @@ if __name__ == "__main__":
                 
                 # ปิด LED ก่อนเริ่มรอบใหม่
                 self.led_off()
+                
+                # แสดงสถานะรอการแตะบัตร
+                self.lcd_show_waiting()
                 
                 success = self.run_single_scan()
                 
@@ -468,6 +582,17 @@ if __name__ == "__main__":
                 self.close_camera()
             if self.stepper:
                 self.stepper.cleanup()
+            
+            # ปิด LCD
+            if self.lcd:
+                try:
+                    self.lcd.clear()
+                    self.lcd.write_string("System Shutdown")
+                    time.sleep(1)
+                    self.lcd.close()
+                    print("LCD turned OFF")
+                except:
+                    pass
             
             # ปิด LED ก่อนจบ (Direct Connection)
             try:
