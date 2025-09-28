@@ -49,6 +49,12 @@ class LCDDisplay:
         if self.lcd:
             self.lcd.clear()
     
+    def write_string(self, text, row=0, col=0):
+        """เขียนข้อความบน LCD"""
+        if self.lcd:
+            self.lcd.cursor_pos = (row, col)
+            self.lcd.write_string(text)
+    
     def close(self):
         """ปิด LCD"""
         if self.lcd:
