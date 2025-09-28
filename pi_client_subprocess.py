@@ -252,6 +252,7 @@ if __name__ == "__main__":
             if response.status_code == 200:
                 result = response.json()
                 print("ได้รับผลจาก API")
+                print(f"🔍 API Response: {result}")
                 return result
             else:
                 print(f"API Error: {response.status_code}")
@@ -270,33 +271,31 @@ if __name__ == "__main__":
         # LED ติดค้างอยู่แล้ว ไม่ต้องกระพริบ
         # self.led_blink(times=2, interval=0.3)
         
-        result = result_data.get('result', {})
-        
+        # ใช้ result_data โดยตรง ไม่ต้อง get('result')
         print("\nการวิเคราะห์ AI:")
         print("=" * 40)
-        print(f"ขวด (Bottles): {result.get('bottle_count', 0)}")
-        print(f"กระป๋อง (Cans): {result.get('can_count', 0)}")
-        print(f"ฝา (Caps): {result.get('cap_count', 0)}")
-        print(f"สลาก (Labels): {result.get('label_count', 0)}")
-        print(f"จำนวนรวม: {result.get('total_detections', 0)}")
-        print(f"คะแนน: {result.get('score', 0)}")
+        print(f"ขวด (Bottles): {result_data.get('bottle_count', 0)}")
+        print(f"กระป๋อง (Cans): {result_data.get('can_count', 0)}")
+        print(f"ฝา (Caps): {result_data.get('cap_count', 0)}")
+        print(f"สลาก (Labels): {result_data.get('label_count', 0)}")
+        print(f"จำนวนรวม: {result_data.get('debug_info', {}).get('total_detections', 0)}")
+        print(f"คะแนน: {result_data.get('score', 0)}")
         print("=" * 40)
         
         # บันทึกคะแนนไปยังเว็บ (ถ้ามี card_id)
         if card_id:
-            self.save_score_to_web(card_id, result)
+            self.save_score_to_web(card_id, result_data)
     
     def save_score_to_web(self, card_id, result):
         """บันทึกคะแนนไปยังเว็บ database"""
         try:
-            # แปลง detections เป็น field ที่ถูกต้อง
-            detections = result.get('detections', {})
+            # ใช้ field โดยตรงจาก result_data
             score_data = {
                 'card_id': str(card_id),
-                'bottle_count': detections.get('bottles', 0),
-                'can_count': detections.get('cans', 0),
-                'cap_count': detections.get('caps', 0),
-                'label_count': detections.get('labels', 0),
+                'bottle_count': result.get('bottle_count', 0),
+                'can_count': result.get('can_count', 0),
+                'cap_count': result.get('cap_count', 0),
+                'label_count': result.get('label_count', 0),
                 'score': result.get('score', 0),
                 'image_path': 'captured_image.jpg'
             }
