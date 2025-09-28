@@ -1,41 +1,62 @@
 #!/usr/bin/env python3
 """
-สคริปต์ปิด LED ที่ GPIO 2
-ใช้เมื่อ LED ติดค้างหรือต้องการปิดก่อนเริ่มระบบ
+โค้ดปิดไฟ LED แยก (GPIO 4)
+ใช้สำหรับปิดไฟ LED ที่ต่อกับ GPIO 4
 """
 
 import RPi.GPIO as GPIO
 import time
 
-LED_PIN = 2  # GPIO 2
+# ตั้งค่า GPIO
+LED_PIN = 4  # GPIO 4
+
+def setup_gpio():
+    """ตั้งค่า GPIO"""
+    try:
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(LED_PIN, GPIO.OUT, initial=GPIO.LOW)
+        print(f"✅ GPIO {LED_PIN} setup complete (OFF)")
+    except Exception as e:
+        print(f"❌ GPIO setup error: {e}")
 
 def turn_off_led():
-    """ปิด LED"""
+    """ปิดไฟ LED"""
     try:
-        print("กำลังปิด LED...")
-        
-        # ตั้งค่า GPIO
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(LED_PIN, GPIO.OUT)
-        
-        # บังคับปิด LED (Active Low - ใช้ HIGH เพื่อปิด)
-        GPIO.output(LED_PIN, GPIO.HIGH)
-        print(f"LED ที่ GPIO {LED_PIN} ปิดแล้ว (Active Low)")
-        
-        time.sleep(0.5)
-        
+        GPIO.output(LED_PIN, GPIO.LOW)
+        print(f"🔴 LED OFF - GPIO {LED_PIN}")
     except Exception as e:
-        print(f"Error: {e}")
-    
-    finally:
-        # ทำความสะอาด GPIO
-        try:
-            GPIO.cleanup()
-            print("GPIO cleanup complete")
-        except:
-            pass
+        print(f"❌ LED OFF error: {e}")
+
+def cleanup():
+    """ทำความสะอาด GPIO"""
+    try:
+        GPIO.cleanup()
+        print("🧹 GPIO cleanup complete")
+    except Exception as e:
+        print(f"❌ GPIO cleanup error: {e}")
 
 if __name__ == "__main__":
-    print("LED OFF Script")
-    print("-" * 20)
-    turn_off_led()
+    print("=" * 50)
+    print("🔴 LED OFF Script (GPIO 4)")
+    print("=" * 50)
+    
+    try:
+        # ตั้งค่า GPIO
+        setup_gpio()
+        
+        # ปิดไฟ LED
+        turn_off_led()
+        
+        # รอสักครู่
+        time.sleep(1)
+        
+        print("✅ LED turned OFF successfully!")
+        
+    except KeyboardInterrupt:
+        print("\n⚠️ Script interrupted by user")
+    except Exception as e:
+        print(f"❌ Script error: {e}")
+    finally:
+        # ทำความสะอาด
+        cleanup()
+        print("🏁 Script finished")
