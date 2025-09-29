@@ -21,6 +21,37 @@
             width: 100%;
             max-width: 500px;
         }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px;
+            }
+            .rfid-card {
+                padding: 30px;
+                border-radius: 10px;
+            }
+            .rfid-header h1 {
+                font-size: 1.8em;
+            }
+            .form-control {
+                font-size: 16px; /* ป้องกัน zoom บน mobile */
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .rfid-card {
+                padding: 20px;
+                border-radius: 8px;
+            }
+            .rfid-header h1 {
+                font-size: 1.6em;
+            }
+            .btn-rfid {
+                padding: 12px 20px;
+                font-size: 1em;
+            }
+        }
         .rfid-header {
             text-align: center;
             margin-bottom: 30px;

@@ -81,6 +81,90 @@
             width: 100%;
             border-collapse: collapse;
             background: white;
+            min-width: 600px;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+                border-radius: 10px;
+            }
+            .header h1 {
+                font-size: 2em;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+            .stat-card {
+                padding: 15px;
+            }
+            .stat-number {
+                font-size: 1.8em;
+            }
+            .stat-label {
+                font-size: 0.9em;
+            }
+            .actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+            table {
+                font-size: 0.9em;
+                min-width: 500px;
+            }
+            th, td {
+                padding: 8px 6px;
+            }
+            .rfid-id {
+                font-size: 0.8em;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .stat-card {
+                padding: 12px;
+            }
+            .stat-number {
+                font-size: 1.6em;
+            }
+            .stat-label {
+                font-size: 0.8em;
+            }
+            table {
+                font-size: 0.8em;
+                min-width: 400px;
+            }
+            th, td {
+                padding: 6px 4px;
+            }
+            .rfid-id {
+                font-size: 0.7em;
+            }
+            .username {
+                max-width: 80px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
         }
         th {
             background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
@@ -169,7 +253,7 @@
         </div>
         
         <div class="actions">
-            <a href="/register" class="btn">สมัครสมาชิกใหม่</a>
+            <a href="/register" class="btn">เข้าสู่ระบบ</a>
             <button class="btn" onclick="window.location.reload()">รีเฟรชข้อมูล</button>
         </div>
         
@@ -184,8 +268,6 @@
                         <th>ชื่อ-นามสกุล</th>
                         <th style="text-align: right;">คะแนนรวม</th>
                         <th style="text-align: center;">จำนวนสแกน</th>
-                        <th style="text-align: center;">สมัครเมื่อ</th>
-                        <th style="text-align: center;">รายละเอียด</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -201,12 +283,6 @@
                         <td>{{ member.full_name or '-' }}</td>
                         <td class="score">{{ member.total_score }}</td>
                         <td style="text-align: center;">{{ member.scan_count }}</td>
-                        <td style="text-align: center;">{{ member.created_at.strftime('%d/%m/%Y') if member.created_at else '-' }}</td>
-                        <td style="text-align: center;">
-                            <a href="/member_detail/{{ member.rfid_id }}" style="color: #667eea; text-decoration: none;">
-                                ดูรายละเอียด →
-                            </a>
-                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
