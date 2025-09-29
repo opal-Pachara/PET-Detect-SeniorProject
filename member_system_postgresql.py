@@ -533,7 +533,7 @@ def register_login():
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-@app.route('/member/<rfid_id>')
+@app.route('/member/<rfid_id>', methods=['GET'])
 def member_detail(rfid_id):
     """รายละเอียดสมาชิก"""
     return render_template('member_detail.html', rfid_id=rfid_id)
@@ -586,7 +586,7 @@ def add_score():
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-@app.route('/api/check_member')
+@app.route('/api/check_member', methods=['GET'])
 def check_member():
     """ตรวจสอบว่าสมาชิกมีอยู่หรือไม่"""
     try:
@@ -624,7 +624,7 @@ def check_member():
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-@app.route('/api/debug_data')
+@app.route('/api/debug_data', methods=['GET'])
 def debug_data():
     """ดูข้อมูลทั้งหมดในฐานข้อมูล (สำหรับ debug)"""
     try:
@@ -691,7 +691,7 @@ def verify_member_password():
     except psycopg2.Error as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-@app.route('/api/members')
+@app.route('/api/members', methods=['GET'])
 def get_members():
     """ดึงข้อมูลสมาชิกทั้งหมด"""
     try:
@@ -724,7 +724,7 @@ def get_members():
     except psycopg2.Error as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-@app.route('/api/leaderboard')
+@app.route('/api/leaderboard', methods=['GET'])
 def get_leaderboard():
     """ตารางคะแนน"""
     try:
@@ -757,7 +757,7 @@ def get_leaderboard():
     except psycopg2.Error as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-@app.route('/api/member/<rfid_id>/history')
+@app.route('/api/member/<rfid_id>/history', methods=['GET'])
 def get_member_history(rfid_id):
     """ประวัติการสแกนของสมาชิก"""
     try:

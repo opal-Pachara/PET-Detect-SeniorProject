@@ -90,7 +90,7 @@
             {% endif %}
         {% endwith %}
 
-        <form id="rfidForm">
+        <form id="rfidForm" action="/register/check" method="POST">
             <div class="mb-3">
                 <label for="rfid_id" class="form-label">RFID ID</label>
                 <input type="text" class="form-control" id="rfid_id" name="rfid_id" 
