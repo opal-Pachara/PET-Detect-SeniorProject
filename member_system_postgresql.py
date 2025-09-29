@@ -197,27 +197,35 @@ def index():
         
         # ดึงข้อมูลสมาชิกทั้งหมดเรียงตามคะแนน
         if isinstance(connection, psycopg2.extensions.connection):
-            # PostgreSQL syntax
+            # PostgreSQL syntax - แสดงข้อมูลจาก scan_logs แม้ไม่มี members
             cursor.execute("""
-                SELECT m.*, 
-                       COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(s.id) as scan_count,
-                       MAX(s.scan_time) as last_scan
-                FROM members m
-                LEFT JOIN scan_logs s ON m.rfid_id = s.rfid_id
-                GROUP BY m.id
+                SELECT 
+                    s.rfid_id,
+                    COALESCE(m.full_name, s.rfid_id) as full_name,
+                    COALESCE(m.username, s.rfid_id) as username,
+                    COALESCE(m.email, '') as email,
+                    SUM(s.score) as total_score,
+                    COUNT(s.id) as scan_count,
+                    MAX(s.scan_time) as last_scan
+                FROM scan_logs s
+                LEFT JOIN members m ON s.rfid_id = m.rfid_id
+                GROUP BY s.rfid_id
                 ORDER BY total_score DESC, scan_count DESC
             """)
         else:
-            # SQLite syntax
+            # SQLite syntax - แสดงข้อมูลจาก scan_logs แม้ไม่มี members
             cursor.execute("""
-                SELECT m.*, 
-                       COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(s.id) as scan_count,
-                       MAX(s.scan_time) as last_scan
-                FROM members m
-                LEFT JOIN scan_logs s ON m.rfid_id = s.rfid_id
-                GROUP BY m.id
+                SELECT 
+                    s.rfid_id,
+                    COALESCE(m.full_name, s.rfid_id) as full_name,
+                    COALESCE(m.username, s.rfid_id) as username,
+                    COALESCE(m.email, '') as email,
+                    SUM(s.score) as total_score,
+                    COUNT(s.id) as scan_count,
+                    MAX(s.scan_time) as last_scan
+                FROM scan_logs s
+                LEFT JOIN members m ON s.rfid_id = m.rfid_id
+                GROUP BY s.rfid_id
                 ORDER BY total_score DESC, scan_count DESC
             """)
         
@@ -231,6 +239,9 @@ def index():
         print(f"DEBUG: Found {len(members)} members")
         for i, member in enumerate(members[:3]):  # แสดงแค่ 3 คนแรก
             print(f"DEBUG: Member {i+1}: {member}")
+        
+        # Debug: ตรวจสอบ raw data
+        print(f"DEBUG: Raw members data: {members}")
         
         # สถิติรวม (รองรับทั้ง PostgreSQL และ SQLite)
         cursor.execute("SELECT COUNT(*) as total_members FROM members")
@@ -363,7 +374,24 @@ def register_check():
         
         cursor = connection.cursor()
         
-        # ตรวจสอบว่า RFID ID มีอยู่แล้วหรือไม่
+        # ตรวจสอบว่า RFID ID มีข้อมูลการสแกนหรือไม่
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("SELECT COUNT(*) FROM scan_logs WHERE rfid_id = %s", (rfid_id,))
+        else:
+            cursor.execute("SELECT COUNT(*) FROM scan_logs WHERE rfid_id = ?", (rfid_id,))
+        
+        scan_count = cursor.fetchone()[0]
+        
+        if scan_count == 0:
+            # ไม่มีข้อมูลการสแกน -> ไม่ให้สมัคร
+            cursor.close()
+            connection.close()
+            return jsonify({
+                'success': False, 
+                'message': 'ไม่พบข้อมูลการสแกน กรุณาแตะบัตร RFID ก่อน'
+            })
+        
+        # ตรวจสอบว่า RFID ID มีสมาชิกอยู่แล้วหรือไม่
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("SELECT id, username, password_hash, full_name, email FROM members WHERE rfid_id = %s", (rfid_id,))
         else:
@@ -395,12 +423,12 @@ def register_check():
                     'message': 'กรุณาสร้างรหัสผ่าน'
                 })
         else:
-            # ยังไม่ใช่สมาชิก -> ไปหน้าสมัครสมาชิกใหม่
+            # ยังไม่ใช่สมาชิก แต่มีข้อมูลการสแกน -> ไปหน้าสมัครสมาชิกใหม่
             return jsonify({
                 'success': True,
                 'action': 'register_new',
                 'rfid_id': rfid_id,
-                'message': 'กรุณาสมัครสมาชิกใหม่'
+                'message': 'พบข้อมูลการสแกน กรุณาสมัครสมาชิกใหม่'
             })
         
     except Exception as e:
