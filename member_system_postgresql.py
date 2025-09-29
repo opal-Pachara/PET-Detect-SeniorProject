@@ -554,6 +554,11 @@ def add_score():
         score = data.get('score', 0)
         image_path = data.get('image_path', '')
         
+        # Debug logging
+        print(f"DEBUG: Received data: {data}")
+        print(f"DEBUG: RFID ID: {rfid_id}")
+        print(f"DEBUG: Score: {score}")
+        
         if not rfid_id:
             return jsonify({'success': False, 'message': 'ไม่พบ RFID ID'})
         
@@ -564,7 +569,7 @@ def add_score():
         cursor = connection.cursor()
         
         # เพิ่มข้อมูลการสแกน (รองรับทั้ง PostgreSQL และ SQLite)
-        if 'sqlite' in str(type(connection)).lower():
+        if isinstance(connection, sqlite3.Connection):
             # SQLite syntax
             cursor.execute("""
                 INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
@@ -581,6 +586,7 @@ def add_score():
         cursor.close()
         connection.close()
         
+        print(f"DEBUG: Successfully saved score for RFID {rfid_id}")
         return jsonify({'success': True, 'message': 'บันทึกคะแนนสำเร็จ'})
         
     except Exception as e:
