@@ -69,19 +69,13 @@
             border-radius: 10px;
             border: none;
         }
-        .rfid-icon {
-            font-size: 3em;
-            margin-bottom: 20px;
-            color: #667eea;
-        }
     </style>
 </head>
 <body>
     <div class="rfid-card">
         <div class="rfid-header">
-            <div class="rfid-icon">📱</div>
             <h1>ล็อกด้วย RFID</h1>
-            <p class="text-muted">กรุณาแตะบัตร RFID หรือกรอก RFID ID</p>
+            <p class="text-muted">กรุณากรอก RFID ID</p>
         </div>
 
         <!-- Flash Messages -->
@@ -100,7 +94,7 @@
             <div class="mb-3">
                 <label for="rfid_id" class="form-label">RFID ID</label>
                 <input type="text" class="form-control" id="rfid_id" name="rfid_id" 
-                       placeholder="กรอก RFID ID หรือแตะบัตร" required>
+                       placeholder="กรอก RFID ID" required>
             </div>
             
             <button type="submit" class="btn btn-primary btn-rfid">
