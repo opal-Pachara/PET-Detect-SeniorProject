@@ -177,7 +177,7 @@ def create_admin_user():
         print(f"Create admin user error: {e}")
         return False
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
     """หน้าหลัก - แสดงอันดับสมาชิก"""
     try:
@@ -271,7 +271,7 @@ def index():
                              total_score=0,
                              total_scans=0)
 
-@app.route('/admin/login')
+@app.route('/admin/login', methods=['GET'])
 def admin_login():
     """หน้าล็อกอินผู้ดูแลระบบ"""
     if session.get('admin_logged_in'):
@@ -315,35 +315,35 @@ def admin_login_post():
         flash('เกิดข้อผิดพลาดในการเข้าสู่ระบบ', 'error')
         return redirect(url_for('admin_login'))
 
-@app.route('/admin')
+@app.route('/admin', methods=['GET'])
 @login_required
 def admin():
     """หน้าผู้ดูแลระบบ - ต้องล็อกอิน"""
     return render_template('admin.html')
 
-@app.route('/admin/logout')
+@app.route('/admin/logout', methods=['GET'])
 def admin_logout():
     """ออกจากระบบ"""
     session.clear()
     flash('ออกจากระบบเรียบร้อย', 'info')
     return redirect(url_for('index'))
 
-@app.route('/dashboard')
+@app.route('/dashboard', methods=['GET'])
 def dashboard():
     """หน้า Dashboard"""
     return render_template('members.html')
 
-@app.route('/members')
+@app.route('/members', methods=['GET'])
 def members():
     """หน้าอันดับ - redirect ไปหน้าหลัก"""
     return redirect(url_for('index'))
 
-@app.route('/register')
+@app.route('/register', methods=['GET'])
 def register_page():
     """หน้าสมัครสมาชิก - เริ่มต้นด้วย RFID"""
     return render_template('register.html')
 
-@app.route('/register/rfid')
+@app.route('/register/rfid', methods=['GET'])
 def register_rfid():
     """หน้าล็อกด้วย RFID"""
     return render_template('register_rfid.html')
@@ -621,8 +621,45 @@ def check_member():
                 'has_password': False
             })
             
-    except psycopg2.Error as e:
+    except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+
+@app.route('/api/debug_data')
+def debug_data():
+    """ดูข้อมูลทั้งหมดในฐานข้อมูล (สำหรับ debug)"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'})
+        
+        cursor = connection.cursor()
+        
+        # ดูข้อมูลใน members table
+        cursor.execute("SELECT * FROM members")
+        members = cursor.fetchall()
+        
+        # ดูข้อมูลใน scan_logs table
+        cursor.execute("SELECT * FROM scan_logs ORDER BY scan_time DESC LIMIT 10")
+        scan_logs = cursor.fetchall()
+        
+        cursor.close()
+        connection.close()
+        
+        # แปลง SQLite Row objects เป็น dict
+        if isinstance(connection, sqlite3.Connection):
+            members = [dict(row) for row in members]
+            scan_logs = [dict(row) for row in scan_logs]
+        
+        return jsonify({
+            'success': True,
+            'members': members,
+            'scan_logs': scan_logs,
+            'members_count': len(members),
+            'scan_logs_count': len(scan_logs)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'})
 
 @app.route('/api/verify_password', methods=['POST'])
 def verify_member_password():
