@@ -179,6 +179,9 @@ def create_admin_user():
 def index():
     """หน้าหลัก - แสดงอันดับสมาชิก"""
     try:
+        # สร้างตารางถ้ายังไม่มี
+        init_database()
+        
         connection = get_db_connection()
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
@@ -525,6 +528,9 @@ def member_detail(rfid_id):
 def add_score():
     """เพิ่มคะแนนจาก RFID scan"""
     try:
+        # สร้างตารางถ้ายังไม่มี
+        init_database()
+        
         data = request.json
         rfid_id = data.get('card_id') or data.get('rfid_id')
         bottle_count = data.get('bottle_count', 0)
