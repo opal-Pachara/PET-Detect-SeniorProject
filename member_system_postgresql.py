@@ -406,9 +406,15 @@ def register_check():
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-@app.route('/register/new', methods=['POST'])
+@app.route('/register/new', methods=['GET', 'POST'])
 def register_new_member():
     """สมัครสมาชิกใหม่"""
+    if request.method == 'GET':
+        # แสดงหน้า form
+        rfid_id = request.args.get('rfid_id')
+        return render_template('register_new.html', rfid_id=rfid_id)
+    
+    # POST method - จัดการ form submission
     try:
         rfid_id = request.form.get('rfid_id')
         password = request.form.get('password')
@@ -448,9 +454,16 @@ def register_new_member():
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-@app.route('/register/password', methods=['POST'])
+@app.route('/register/password', methods=['GET', 'POST'])
 def register_create_password():
     """สร้างรหัสผ่านสำหรับสมาชิกที่มีอยู่"""
+    if request.method == 'GET':
+        # แสดงหน้า form
+        rfid_id = request.args.get('rfid_id')
+        username = request.args.get('username')
+        return render_template('register_password.html', rfid_id=rfid_id, username=username)
+    
+    # POST method - จัดการ form submission
     try:
         rfid_id = request.form.get('rfid_id')
         password = request.form.get('password')
@@ -490,9 +503,15 @@ def register_create_password():
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-@app.route('/register/login', methods=['POST'])
+@app.route('/register/login', methods=['GET', 'POST'])
 def register_login():
     """ล็อกอินสมาชิก"""
+    if request.method == 'GET':
+        # แสดงหน้า form
+        rfid_id = request.args.get('rfid_id')
+        return render_template('register_login.html', rfid_id=rfid_id)
+    
+    # POST method - จัดการ form submission
     try:
         rfid_id = request.form.get('rfid_id')
         password = request.form.get('password')
