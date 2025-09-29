@@ -549,11 +549,19 @@ def add_score():
         
         cursor = connection.cursor()
         
-        # เพิ่มข้อมูลการสแกน
-        cursor.execute("""
-            INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
+        # เพิ่มข้อมูลการสแกน (รองรับทั้ง PostgreSQL และ SQLite)
+        if 'sqlite' in str(type(connection)).lower():
+            # SQLite syntax
+            cursor.execute("""
+                INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
+        else:
+            # PostgreSQL syntax
+            cursor.execute("""
+                INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
         
         connection.commit()
         cursor.close()
@@ -561,7 +569,7 @@ def add_score():
         
         return jsonify({'success': True, 'message': 'บันทึกคะแนนสำเร็จ'})
         
-    except psycopg2.Error as e:
+    except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
 @app.route('/api/check_member')

@@ -14,6 +14,10 @@ from ultralytics import YOLO
 
 # Set YOLO config directory to avoid warning
 os.environ['YOLO_CONFIG_DIR'] = '/tmp/Ultralytics'
+
+# Suppress YOLO warnings
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='ultralytics')
 import cv2
 import numpy as np
 from PIL import Image
