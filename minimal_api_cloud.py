@@ -27,9 +27,8 @@ app = Flask(__name__)
 
 # Load model
 try:
-    # Fix PyTorch weights_only issue
+    # Fix PyTorch 2.6 weights_only issue
     import torch
-    import torch.serialization
     torch.serialization.add_safe_globals([
         'ultralytics.nn.tasks.DetectionModel',
         'ultralytics.nn.modules.block.Bottleneck',
@@ -41,28 +40,26 @@ try:
         'ultralytics.nn.modules.block.RepConv'
     ])
     
-    # Set weights_only=False for older models
-    import os
-    os.environ['TORCH_WEIGHTS_ONLY'] = 'False'
-    
-    # Try loading custom model first
+    # Try loading custom model first (YOLOv11n)
+    model = YOLO('model-yolov5s/best.pt')
+    logger.info("Model loaded successfully from model-yolov5s/best.pt (YOLOv11n)")
+    logger.info(f"Model classes: {model.names}")
+    logger.info(f"Model classes count: {len(model.names)}")
+except Exception as e:
+    logger.error(f"Failed to load custom model: {e}")
+    # Fallback to standard YOLOv11n (ultralytics >= 8.3.0)
     try:
-        model = YOLO('model-yolov5s/best.pt')
-        logger.info("Model loaded successfully from model-yolov5s/best.pt")
-        logger.info(f"Model classes: {model.names}")
-        logger.info(f"Model classes count: {len(model.names)}")
-    except Exception as e:
-        logger.error(f"Failed to load custom model: {e}")
-        # Fallback to YOLOv8n (more stable)
+        model = YOLO('yolo11n.pt')
+        logger.info("Fallback to standard YOLOv11n model")
+    except Exception as e2:
+        logger.error(f"Failed to load standard YOLOv11n model: {e2}")
+        # Final fallback to YOLOv8n
         try:
             model = YOLO('yolov8n.pt')
-            logger.info("Fallback to standard YOLOv8n model")
-        except Exception as e2:
-            logger.error(f"Failed to load YOLOv8n model: {e2}")
+            logger.info("Final fallback to standard YOLOv8n model")
+        except Exception as e3:
+            logger.error(f"Failed to load YOLOv8n model: {e3}")
             model = None
-except Exception as e:
-    logger.error(f"Model loading failed: {e}")
-    model = None
 
 @app.route('/', methods=['GET'])
 def root():
