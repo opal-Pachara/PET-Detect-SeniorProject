@@ -583,7 +583,121 @@ def register_login():
 @app.route('/member/<rfid_id>', methods=['GET'])
 def member_detail(rfid_id):
     """รายละเอียดสมาชิก"""
-    return render_template('member_detail.html', rfid_id=rfid_id)
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cursor = connection.cursor()
+        
+        # ดึงข้อมูลสมาชิก
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("SELECT * FROM members WHERE rfid_id = %s", (rfid_id,))
+        else:
+            cursor.execute("SELECT * FROM members WHERE rfid_id = ?", (rfid_id,))
+        
+        member = cursor.fetchone()
+        
+        # ดึงประวัติการสแกน
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("""
+                SELECT * FROM scan_logs 
+                WHERE rfid_id = %s 
+                ORDER BY scan_time DESC
+            """, (rfid_id,))
+        else:
+            cursor.execute("""
+                SELECT * FROM scan_logs 
+                WHERE rfid_id = ? 
+                ORDER BY scan_time DESC
+            """, (rfid_id,))
+        
+        scan_history = cursor.fetchall()
+        
+        cursor.close()
+        connection.close()
+        
+        # แปลง SQLite Row objects เป็น dict
+        if isinstance(connection, sqlite3.Connection):
+            if member:
+                member = dict(member)
+            scan_history = [dict(row) for row in scan_history]
+        
+        return render_template('member_detail.html', 
+                             rfid_id=rfid_id, 
+                             member=member, 
+                             scan_history=scan_history)
+        
+    except Exception as e:
+        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'}), 500
+
+@app.route('/api/member/<rfid_id>', methods=['GET'])
+def api_get_member(rfid_id):
+    """API ดึงข้อมูลสมาชิก"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        
+        cursor = connection.cursor()
+        
+        # ดึงข้อมูลสมาชิก
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("SELECT * FROM members WHERE rfid_id = %s", (rfid_id,))
+        else:
+            cursor.execute("SELECT * FROM members WHERE rfid_id = ?", (rfid_id,))
+        
+        member = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        
+        if member:
+            # แปลง SQLite Row objects เป็น dict
+            if isinstance(connection, sqlite3.Connection):
+                member = dict(member)
+            return jsonify({'success': True, 'member': member})
+        else:
+            return jsonify({'success': False, 'message': 'ไม่พบสมาชิก'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+
+@app.route('/api/member/<rfid_id>/history', methods=['GET'])
+def api_get_member_history(rfid_id):
+    """API ดึงประวัติการสแกนของสมาชิก"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        
+        cursor = connection.cursor()
+        
+        # ดึงประวัติการสแกน
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("""
+                SELECT * FROM scan_logs 
+                WHERE rfid_id = %s 
+                ORDER BY scan_time DESC
+            """, (rfid_id,))
+        else:
+            cursor.execute("""
+                SELECT * FROM scan_logs 
+                WHERE rfid_id = ? 
+                ORDER BY scan_time DESC
+            """, (rfid_id,))
+        
+        history = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        
+        # แปลง SQLite Row objects เป็น dict
+        if isinstance(connection, sqlite3.Connection):
+            history = [dict(row) for row in history]
+        
+        return jsonify({'success': True, 'history': history})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
 @app.route('/api/add_score', methods=['POST'])
 def add_score():
