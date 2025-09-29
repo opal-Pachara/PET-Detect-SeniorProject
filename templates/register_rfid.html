@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PET Detect - ล็อกด้วย RFID</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .rfid-card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        .rfid-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .rfid-header h1 {
+            color: #4a5568;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .form-control {
+            border-radius: 10px;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-rfid {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-weight: bold;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        .btn-rfid:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .rfid-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="rfid-card">
+        <div class="rfid-header">
+            <div class="rfid-icon">📱</div>
+            <h1>ล็อกด้วย RFID</h1>
+            <p class="text-muted">กรุณาแตะบัตร RFID หรือกรอก RFID ID</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form id="rfidForm">
+            <div class="mb-3">
+                <label for="rfid_id" class="form-label">RFID ID</label>
+                <input type="text" class="form-control" id="rfid_id" name="rfid_id" 
+                       placeholder="กรอก RFID ID หรือแตะบัตร" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-rfid">
+                ตรวจสอบ RFID
+            </button>
+        </form>
+
+        <div class="back-link">
+            <a href="/">← กลับหน้าหลัก</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('rfidForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const rfidId = document.getElementById('rfid_id').value;
+            
+            if (!rfidId) {
+                alert('กรุณากรอก RFID ID');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('rfid_id', rfidId);
+                
+                const response = await fetch('/register/check', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.action === 'login') {
+                        // ไปหน้าล็อกอิน
+                        window.location.href = `/register/login?rfid_id=${result.rfid_id}`;
+                    } else if (result.action === 'create_password') {
+                        // ไปหน้าสร้างรหัสผ่าน
+                        window.location.href = `/register/password?rfid_id=${result.rfid_id}&username=${result.username}`;
+                    } else if (result.action === 'register_new') {
+                        // ไปหน้าสมัครใหม่
+                        window.location.href = `/register/new?rfid_id=${result.rfid_id}`;
+                    }
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
