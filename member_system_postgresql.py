@@ -40,6 +40,8 @@ def get_db_connection():
         try:
             # Fallback to SQLite
             connection = sqlite3.connect('pet_detect.db')
+            # Set row factory สำหรับ SQLite
+            connection.row_factory = sqlite3.Row
             print("Connected to SQLite (fallback)")
             return connection
         except Exception as sqlite_error:
@@ -190,10 +192,8 @@ def index():
         if isinstance(connection, psycopg2.extensions.connection):
             cursor = connection.cursor(cursor_factory=RealDictCursor)
         else:
-            # SQLite
+            # SQLite (row_factory already set in get_db_connection)
             cursor = connection.cursor()
-            # สร้าง Row factory สำหรับ SQLite
-            connection.row_factory = sqlite3.Row
         
         # ดึงข้อมูลสมาชิกทั้งหมดเรียงตามคะแนน
         if isinstance(connection, psycopg2.extensions.connection):
