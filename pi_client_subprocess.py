@@ -177,9 +177,9 @@ class PETDetectSubprocess:
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string(f"B:{bottle_count} C:{cap_count}")
+                self.lcd.write_string(f"Bottles:{bottle_count} Caps:{cap_count}")
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string(f"L:{label_count} K:{can_count}")
+                self.lcd.write_string(f"Labels:{label_count} Cans:{can_count}")
             except Exception as e:
                 print(f"LCD display error: {e}")
     

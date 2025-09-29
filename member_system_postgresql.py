@@ -60,6 +60,10 @@ def init_database():
             CREATE TABLE IF NOT EXISTS scan_logs (
                 id SERIAL PRIMARY KEY,
                 rfid_id VARCHAR(50) NOT NULL,
+                bottle_count INTEGER DEFAULT 0,
+                can_count INTEGER DEFAULT 0,
+                cap_count INTEGER DEFAULT 0,
+                label_count INTEGER DEFAULT 0,
                 score INTEGER DEFAULT 0,
                 image_path VARCHAR(500),
                 scan_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -87,13 +91,69 @@ def verify_password(password, hashed):
 
 @app.route('/')
 def index():
-    """หน้าหลัก"""
-    return render_template('login.html')
+    """หน้าหลัก - แสดงอันดับสมาชิก"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        
+        # ดึงข้อมูลสมาชิกทั้งหมดเรียงตามคะแนน
+        cursor.execute("""
+            SELECT m.*, 
+                   COALESCE(SUM(s.score), 0) as total_score,
+                   COUNT(s.id) as scan_count,
+                   MAX(s.scan_time) as last_scan
+            FROM members m
+            LEFT JOIN scan_logs s ON m.rfid_id = s.rfid_id
+            GROUP BY m.id
+            ORDER BY total_score DESC, scan_count DESC
+        """)
+        
+        members = cursor.fetchall()
+        
+        # สถิติรวม
+        cursor.execute("SELECT COUNT(*) as total_members FROM members")
+        total_members = cursor.fetchone()['total_members']
+        
+        cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
+        total_score = cursor.fetchone()['total_score']
+        
+        cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
+        total_scans = cursor.fetchone()['total_scans']
+        
+        cursor.close()
+        connection.close()
+        
+        return render_template('members.html', 
+                             members=[dict(member) for member in members], 
+                             total_members=total_members,
+                             total_score=total_score,
+                             total_scans=total_scans)
+        
+    except psycopg2.Error as e:
+        print(f"Index page error: {e}")
+        return render_template('members.html', 
+                             members=[], 
+                             total_members=0,
+                             total_score=0,
+                             total_scans=0)
+
+@app.route('/admin')
+def admin():
+    """หน้าผู้ดูแลระบบ - ต้องล็อกอิน"""
+    return render_template('admin.html')
 
 @app.route('/dashboard')
 def dashboard():
     """หน้า Dashboard"""
     return render_template('members.html')
+
+@app.route('/members')
+def members():
+    """หน้าอันดับ - redirect ไปหน้าหลัก"""
+    return redirect(url_for('index'))
 
 @app.route('/register')
 def register_page():
@@ -161,7 +221,11 @@ def add_score():
     """เพิ่มคะแนนจาก RFID scan"""
     try:
         data = request.json
-        rfid_id = data.get('rfid_id')
+        rfid_id = data.get('card_id') or data.get('rfid_id')
+        bottle_count = data.get('bottle_count', 0)
+        can_count = data.get('can_count', 0)
+        cap_count = data.get('cap_count', 0)
+        label_count = data.get('label_count', 0)
         score = data.get('score', 0)
         image_path = data.get('image_path', '')
         
@@ -176,9 +240,9 @@ def add_score():
         
         # เพิ่มข้อมูลการสแกน
         cursor.execute("""
-            INSERT INTO scan_logs (rfid_id, score, image_path)
-            VALUES (%s, %s, %s)
-        """, (rfid_id, score, image_path))
+            INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
         
         connection.commit()
         cursor.close()
@@ -333,7 +397,9 @@ def get_member_history(rfid_id):
         
         cursor = connection.cursor(cursor_factory=RealDictCursor)
         cursor.execute("""
-            SELECT * FROM scan_logs 
+            SELECT bottle_count, can_count, cap_count, label_count, 
+                   score, scan_time, image_path
+            FROM scan_logs 
             WHERE rfid_id = %s 
             ORDER BY scan_time DESC 
             LIMIT 50
