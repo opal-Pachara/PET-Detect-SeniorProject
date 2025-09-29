@@ -227,18 +227,32 @@ def index():
         if isinstance(connection, sqlite3.Connection):
             members = [dict(row) for row in members]
         
-        # สถิติรวม
+        # Debug: ตรวจสอบข้อมูลที่ได้
+        print(f"DEBUG: Found {len(members)} members")
+        for i, member in enumerate(members[:3]):  # แสดงแค่ 3 คนแรก
+            print(f"DEBUG: Member {i+1}: {member}")
+        
+        # สถิติรวม (รองรับทั้ง PostgreSQL และ SQLite)
         cursor.execute("SELECT COUNT(*) as total_members FROM members")
         total_members_row = cursor.fetchone()
-        total_members = total_members_row['total_members'] if isinstance(total_members_row, dict) else total_members_row[0]
+        if isinstance(connection, sqlite3.Connection):
+            total_members = total_members_row['total_members'] if total_members_row else 0
+        else:
+            total_members = total_members_row['total_members'] if total_members_row else 0
         
         cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
         total_score_row = cursor.fetchone()
-        total_score = total_score_row['total_score'] if isinstance(total_score_row, dict) else total_score_row[0]
+        if isinstance(connection, sqlite3.Connection):
+            total_score = total_score_row['total_score'] if total_score_row else 0
+        else:
+            total_score = total_score_row['total_score'] if total_score_row else 0
         
         cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
         total_scans_row = cursor.fetchone()
-        total_scans = total_scans_row['total_scans'] if isinstance(total_scans_row, dict) else total_scans_row[0]
+        if isinstance(connection, sqlite3.Connection):
+            total_scans = total_scans_row['total_scans'] if total_scans_row else 0
+        else:
+            total_scans = total_scans_row['total_scans'] if total_scans_row else 0
         
         cursor.close()
         connection.close()
