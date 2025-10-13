@@ -264,8 +264,6 @@
                     <tr>
                         <th style="text-align: center;">อันดับ</th>
                         <th>RFID ID</th>
-                        <th>Username</th>
-                        <th>ชื่อ-นามสกุล</th>
                         <th style="text-align: right;">คะแนนรวม</th>
                         <th style="text-align: center;">จำนวนสแกน</th>
                     </tr>
@@ -277,10 +275,8 @@
                             #{{ loop.index }}
                         </td>
                         <td>
-                            <span class="rfid-id">{{ member.rfid_id[:12] }}...</span>
+                            <span class="rfid-id">{{ member.rfid_id }}</span>
                         </td>
-                        <td class="username">{{ member.username }}</td>
-                        <td>{{ member.full_name or '-' }}</td>
                         <td class="score">{{ member.total_score }}</td>
                         <td style="text-align: center;">{{ member.scan_count }}</td>
                     </tr>

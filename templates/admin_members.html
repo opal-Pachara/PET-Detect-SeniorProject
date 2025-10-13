@@ -70,25 +70,23 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="member-card">
                         <div class="member-info">
-                            <h5>{{ member.full_name or member.username or member.rfid_id }}</h5>
+                            <h5>{{ member.rfid_id }}</h5>
                             <p class="text-muted mb-2">
-                                <strong>RFID:</strong> {{ member.rfid_id }}<br>
-                                <strong>Username:</strong> {{ member.username or '-' }}<br>
-                                <strong>Email:</strong> {{ member.email or '-' }}
+                                <strong>RFID:</strong> {{ member.rfid_id }}
                             </p>
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="score-badge">
-                                    คะแนน: {{ member.total_score or 0 }}
+                                    คะแนน: {{ member.total_score|default(0) }}
                                 </span>
                                 <small class="text-muted">
-                                    สแกน: {{ member.scan_count or 0 }} ครั้ง
+                                    สแกน: {{ member.scan_count|default(0) }} ครั้ง
                                 </small>
                             </div>
                             <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-warning" onclick="editScore('{{ member.rfid_id }}', {{ member.total_score or 0 }})">
+                                <button class="btn btn-sm btn-warning" onclick="editScore('{{ member.rfid_id }}', '{{ member.total_score|default(0) }}')">
                                     แก้ไขคะแนน
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteMember('{{ member.rfid_id }}', '{{ member.full_name or member.username or member.rfid_id }}')">
+                                <button class="btn btn-sm btn-danger" onclick="deleteMember('{{ member.rfid_id }}', '{{ member.rfid_id }}')">
                                     ลบสมาชิก
                                 </button>
                             </div>
@@ -135,7 +133,9 @@
     
     <script>
         function editScore(rfidId, currentScore) {
-            const newScore = prompt(`แก้ไขคะแนนสำหรับ RFID: ${rfidId}\nคะแนนปัจจุบัน: ${currentScore}\nกรุณาใส่คะแนนใหม่:`, currentScore);
+            // แปลง currentScore เป็น number
+            const currentScoreNum = parseInt(currentScore) || 0;
+            const newScore = prompt(`แก้ไขคะแนนสำหรับ RFID: ${rfidId}\nคะแนนปัจจุบัน: ${currentScoreNum}\nกรุณาใส่คะแนนใหม่:`, currentScoreNum);
             
             if (newScore !== null && newScore !== '' && !isNaN(newScore)) {
                 const score = parseInt(newScore);

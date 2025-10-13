@@ -69,6 +69,7 @@ def init_database():
                     full_name VARCHAR(200),
                     email VARCHAR(100),
                     phone VARCHAR(20),
+                    total_score INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -98,6 +99,7 @@ def init_database():
                     full_name TEXT,
                     email TEXT,
                     phone TEXT,
+                    total_score INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
@@ -204,7 +206,7 @@ def create_admin_user():
 
 @app.route('/', methods=['GET'])
 def index():
-    """หน้าหลัก - แสดงอันดับสมาชิก"""
+    """หน้าหลัก - แสดงตารางคะแนนเลย"""
     try:
         # สร้างตารางถ้ายังไม่มี
         init_database()
@@ -651,9 +653,29 @@ def scan_history():
         
         scan_history = cursor.fetchall()
         
-        # แปลงข้อมูลสำหรับ SQLite
+        # แปลงข้อมูลสำหรับ SQLite และจัดรูปแบบวันที่
         if isinstance(connection, sqlite3.Connection):
             scan_history = [dict(scan) for scan in scan_history]
+        
+        # จัดรูปแบบวันที่ให้เป็น string
+        for scan in scan_history:
+            if scan.get('scan_time'):
+                if isinstance(scan['scan_time'], str):
+                    # ถ้าเป็น string แล้ว ให้แปลงเป็น datetime object ก่อน
+                    try:
+                        from datetime import datetime
+                        if 'T' in scan['scan_time']:
+                            # ISO format
+                            dt = datetime.fromisoformat(scan['scan_time'].replace('Z', '+00:00'))
+                        else:
+                            # SQLite format
+                            dt = datetime.strptime(scan['scan_time'], '%Y-%m-%d %H:%M:%S')
+                        scan['scan_time'] = dt.strftime('%d/%m/%Y %H:%M')
+                    except:
+                        scan['scan_time'] = str(scan['scan_time'])
+                else:
+                    # ถ้าเป็น datetime object
+                    scan['scan_time'] = scan['scan_time'].strftime('%d/%m/%Y %H:%M')
         
         connection.close()
         return render_template('admin_history.html', scan_history=scan_history)
@@ -688,6 +710,17 @@ def admin_edit_score():
                 WHERE rfid_id = %s 
                 AND scan_time = (SELECT MAX(scan_time) FROM scan_logs WHERE rfid_id = %s)
             """, (new_score, rfid_id, rfid_id))
+            
+            # อัปเดตคะแนนรวมในตาราง members
+            cursor.execute("""
+                UPDATE members 
+                SET total_score = (
+                    SELECT COALESCE(SUM(score), 0) 
+                    FROM scan_logs 
+                    WHERE rfid_id = %s
+                )
+                WHERE rfid_id = %s
+            """, (rfid_id, rfid_id))
         else:
             cursor.execute("""
                 UPDATE scan_logs 
@@ -695,6 +728,17 @@ def admin_edit_score():
                 WHERE rfid_id = ? 
                 AND scan_time = (SELECT MAX(scan_time) FROM scan_logs WHERE rfid_id = ?)
             """, (new_score, rfid_id, rfid_id))
+            
+            # อัปเดตคะแนนรวมในตาราง members
+            cursor.execute("""
+                UPDATE members 
+                SET total_score = (
+                    SELECT COALESCE(SUM(score), 0) 
+                    FROM scan_logs 
+                    WHERE rfid_id = ?
+                )
+                WHERE rfid_id = ?
+            """, (rfid_id, rfid_id))
         
         connection.commit()
         cursor.close()
@@ -1107,8 +1151,11 @@ def add_score():
         can_count = data.get('can_count', 0)
         cap_count = data.get('cap_count', 0)
         label_count = data.get('label_count', 0)
-        score = data.get('score', 0)
         image_path = data.get('image_path', '')
+        
+        # คำนวณคะแนนใหม่ตามระบบใหม่
+        # ขวด PET: +50 คะแนน, กระป๋อง: +100 คะแนน, ฝา: -10 คะแนน, สลาก: -10 คะแนน
+        score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
         
         # Debug logging
         print(f"DEBUG: Received data: {data}")
@@ -1137,6 +1184,28 @@ def add_score():
                 INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
+        
+        # อัปเดตคะแนนรวมในตาราง members
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("""
+                UPDATE members 
+                SET total_score = (
+                    SELECT COALESCE(SUM(score), 0) 
+                    FROM scan_logs 
+                    WHERE rfid_id = %s
+                )
+                WHERE rfid_id = %s
+            """, (rfid_id, rfid_id))
+        else:
+            cursor.execute("""
+                UPDATE members 
+                SET total_score = (
+                    SELECT COALESCE(SUM(score), 0) 
+                    FROM scan_logs 
+                    WHERE rfid_id = ?
+                )
+                WHERE rfid_id = ?
+            """, (rfid_id, rfid_id))
         
         connection.commit()
         cursor.close()
