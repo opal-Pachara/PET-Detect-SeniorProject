@@ -332,7 +332,10 @@ def admin_login():
             return redirect(url_for('admin_login'))
         
         print("DEBUG: Database connection successful")
-        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
         
         # ตรวจสอบผู้ใช้
         if isinstance(connection, psycopg2.extensions.connection):
@@ -346,14 +349,20 @@ def admin_login():
         print(f"DEBUG: User found: {user}")
         
         if user:
-            print(f"DEBUG: Verifying password for user: {user['username']}")
-            password_valid = verify_password(password, user['password_hash'])
+            # แปลง user เป็น dict สำหรับ SQLite
+            if isinstance(connection, sqlite3.Connection):
+                user_dict = dict(user)
+            else:
+                user_dict = user
+                
+            print(f"DEBUG: Verifying password for user: {user_dict['username']}")
+            password_valid = verify_password(password, user_dict['password_hash'])
             print(f"DEBUG: Password valid: {password_valid}")
             
             if password_valid:
                 session['admin_logged_in'] = True
-                session['admin_username'] = user['username']
-                session['admin_id'] = user['id']
+                session['admin_username'] = user_dict['username']
+                session['admin_id'] = user_dict['id']
                 print("DEBUG: Login successful")
                 flash('เข้าสู่ระบบสำเร็จ', 'success')
                 return redirect(url_for('admin'))
@@ -400,7 +409,10 @@ def debug_admin():
         if not connection:
             return jsonify({'error': 'Database connection failed'})
         
-        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
         
         # ตรวจสอบ admin user
         if isinstance(connection, psycopg2.extensions.connection):
@@ -418,12 +430,32 @@ def debug_admin():
         
         member_count = cursor.fetchone()
         
+        # ตรวจสอบ database type ก่อนปิด connection
+        is_postgresql = isinstance(connection, psycopg2.extensions.connection)
+        
         connection.close()
         
+        # แปลงข้อมูลให้เหมาะสมกับ database type
+        if admin_user:
+            if is_postgresql:
+                admin_user_dict = dict(admin_user)
+            else:
+                admin_user_dict = dict(admin_user)
+        else:
+            admin_user_dict = None
+            
+        if member_count:
+            if is_postgresql:
+                count_value = member_count['count']
+            else:
+                count_value = member_count['count']
+        else:
+            count_value = 0
+        
         return jsonify({
-            'admin_user': dict(admin_user) if admin_user else None,
-            'member_count': member_count['count'] if member_count else 0,
-            'database_type': 'PostgreSQL' if isinstance(connection, psycopg2.extensions.connection) else 'SQLite'
+            'admin_user': admin_user_dict,
+            'member_count': count_value,
+            'database_type': 'PostgreSQL' if is_postgresql else 'SQLite'
         })
         
     except Exception as e:
@@ -856,7 +888,10 @@ def check_member():
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
-        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
         cursor.execute("SELECT * FROM members WHERE rfid_id = %s", (rfid_id,))
         member = cursor.fetchone()
         
@@ -864,12 +899,17 @@ def check_member():
         connection.close()
         
         if member:
-            has_password = bool(member['password_hash'])
+            # แปลง member เป็น dict สำหรับ SQLite
+            if isinstance(connection, sqlite3.Connection):
+                member_dict = dict(member)
+            else:
+                member_dict = member
+            has_password = bool(member_dict['password_hash'])
             return jsonify({
                 'success': True,
                 'is_member': True,
                 'has_password': has_password,
-                'member': dict(member)
+                'member': member_dict
             })
         else:
             return jsonify({
@@ -933,17 +973,29 @@ def verify_member_password():
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
-        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
         cursor.execute("SELECT * FROM members WHERE rfid_id = %s", (rfid_id,))
         member = cursor.fetchone()
         
         cursor.close()
         connection.close()
         
-        if member and verify_password(password, member['password_hash']):
-            return jsonify({'success': True, 'message': 'รหัสผ่านถูกต้อง'})
+        if member:
+            # แปลง member เป็น dict สำหรับ SQLite
+            if isinstance(connection, sqlite3.Connection):
+                member_dict = dict(member)
+            else:
+                member_dict = member
+                
+            if verify_password(password, member_dict['password_hash']):
+                return jsonify({'success': True, 'message': 'รหัสผ่านถูกต้อง'})
+            else:
+                return jsonify({'success': False, 'message': 'รหัสผ่านไม่ถูกต้อง'})
         else:
-            return jsonify({'success': False, 'message': 'รหัสผ่านไม่ถูกต้อง'})
+            return jsonify({'success': False, 'message': 'ไม่พบสมาชิก'})
             
     except psycopg2.Error as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
@@ -956,7 +1008,10 @@ def get_members():
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
-        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
         cursor.execute("""
             SELECT m.*, 
                    COALESCE(SUM(s.score), 0) as total_score,
@@ -989,7 +1044,10 @@ def get_leaderboard():
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
-        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
         cursor.execute("""
             SELECT m.username, m.full_name,
                    COALESCE(SUM(s.score), 0) as total_score,
@@ -1022,7 +1080,10 @@ def get_member_history(rfid_id):
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
-        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
         cursor.execute("""
             SELECT bottle_count, can_count, cap_count, label_count, 
                    score, scan_time, image_path
