@@ -90,7 +90,7 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('admin_login_post') }}">
+        <form method="POST" action="{{ url_for('admin_login') }}">
             <div class="mb-3">
                 <label for="username" class="form-label">ชื่อผู้ใช้</label>
                 <input type="text" class="form-control" id="username" name="username" required>

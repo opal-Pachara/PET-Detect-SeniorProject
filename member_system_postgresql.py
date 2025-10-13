@@ -282,16 +282,15 @@ def index():
                              total_score=0,
                              total_scans=0)
 
-@app.route('/admin/login', methods=['GET'])
+@app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     """หน้าล็อกอินผู้ดูแลระบบ"""
-    if session.get('admin_logged_in'):
-        return redirect(url_for('admin'))
-    return render_template('admin_login.html')
-
-@app.route('/admin/login', methods=['POST'])
-def admin_login_post():
-    """ตรวจสอบการล็อกอินผู้ดูแลระบบ"""
+    if request.method == 'GET':
+        if session.get('admin_logged_in'):
+            return redirect(url_for('admin'))
+        return render_template('admin_login.html')
+    
+    # POST method - จัดการ form submission
     username = request.form.get('username')
     password = request.form.get('password')
     
@@ -306,11 +305,14 @@ def admin_login_post():
             return redirect(url_for('admin_login'))
         
         cursor = connection.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM members WHERE username = %s", (username,))
-        user = cursor.fetchone()
         
-        cursor.close()
-        connection.close()
+        # ตรวจสอบผู้ใช้
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("SELECT id, username, password_hash FROM members WHERE username = %s", (username,))
+        else:
+            cursor.execute("SELECT id, username, password_hash FROM members WHERE username = ?", (username,))
+        
+        user = cursor.fetchone()
         
         if user and verify_password(password, user['password_hash']):
             session['admin_logged_in'] = True
@@ -325,6 +327,13 @@ def admin_login_post():
     except psycopg2.Error as e:
         flash('เกิดข้อผิดพลาดในการเข้าสู่ระบบ', 'error')
         return redirect(url_for('admin_login'))
+    except Exception as e:
+        flash('เกิดข้อผิดพลาดในการเข้าสู่ระบบ', 'error')
+        return redirect(url_for('admin_login'))
+    finally:
+        if connection:
+            connection.close()
+
 
 @app.route('/admin', methods=['GET'])
 @login_required
