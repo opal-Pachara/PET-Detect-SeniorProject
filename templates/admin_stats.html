@@ -90,38 +90,11 @@
             </div>
         </div>
 
-        <!-- ข้อมูลเพิ่มเติม -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="stat-item">
-                    <h4>ข้อมูลระบบ</h4>
-                    <p><strong>ฐานข้อมูล:</strong> SQLite (Fallback)</p>
-                    <p><strong>สถานะ:</strong> ระบบทำงานปกติ</p>
-                    <p><strong>อัปเดตล่าสุด:</strong> <span id="currentTime"></span></p>
-                </div>
-            </div>
-            
-        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // แสดงเวลาปัจจุบัน
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleString('th-TH', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('currentTime').textContent = timeString;
-        }
-        
-        // อัปเดตเวลาทุกวินาที
-        updateTime();
-        setInterval(updateTime, 1000);
+        // ไม่มี JavaScript ที่จำเป็น
     </script>
 </body>
 </html>
