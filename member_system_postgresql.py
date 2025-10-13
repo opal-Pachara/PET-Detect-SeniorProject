@@ -516,6 +516,229 @@ def dashboard():
     """หน้า Dashboard"""
     return render_template('members.html')
 
+@app.route('/stats', methods=['GET'])
+@login_required
+def stats():
+    """หน้าสถิติการใช้งานระบบ"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
+        
+        # สถิติสมาชิก
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("SELECT COUNT(*) as total_members FROM members")
+            total_members = cursor.fetchone()['total_members']
+            
+            cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
+            total_scans = cursor.fetchone()['total_scans']
+            
+            cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
+            total_score = cursor.fetchone()['total_score']
+            
+            cursor.execute("SELECT COUNT(DISTINCT rfid_id) as active_users FROM scan_logs")
+            active_users = cursor.fetchone()['active_users']
+        else:
+            cursor.execute("SELECT COUNT(*) as total_members FROM members")
+            total_members = cursor.fetchone()['total_members']
+            
+            cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
+            total_scans = cursor.fetchone()['total_scans']
+            
+            cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
+            total_score = cursor.fetchone()['total_score']
+            
+            cursor.execute("SELECT COUNT(DISTINCT rfid_id) as active_users FROM scan_logs")
+            active_users = cursor.fetchone()['active_users']
+        
+        stats_data = {
+            'total_members': total_members or 0,
+            'total_scans': total_scans or 0,
+            'total_score': total_score or 0,
+            'active_users': active_users or 0
+        }
+        
+        connection.close()
+        return render_template('admin_stats.html', stats=stats_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/manage_members', methods=['GET'])
+@login_required
+def manage_members():
+    """หน้าจัดการสมาชิก"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
+        
+        # ดึงข้อมูลสมาชิกทั้งหมด
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("""
+                SELECT m.*, 
+                       COALESCE(SUM(s.score), 0) as total_score,
+                       COUNT(s.id) as scan_count
+                FROM members m
+                LEFT JOIN scan_logs s ON m.rfid_id = s.rfid_id
+                GROUP BY m.id
+                ORDER BY total_score DESC
+            """)
+        else:
+            cursor.execute("""
+                SELECT m.*, 
+                       COALESCE(SUM(s.score), 0) as total_score,
+                       COUNT(s.id) as scan_count
+                FROM members m
+                LEFT JOIN scan_logs s ON m.rfid_id = s.rfid_id
+                GROUP BY m.id
+                ORDER BY total_score DESC
+            """)
+        
+        members = cursor.fetchall()
+        
+        # แปลงข้อมูลสำหรับ SQLite
+        if isinstance(connection, sqlite3.Connection):
+            members = [dict(member) for member in members]
+        
+        connection.close()
+        return render_template('admin_members.html', members=members)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/scan_history', methods=['GET'])
+@login_required
+def scan_history():
+    """หน้าประวัติการสแกน"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
+        
+        # ดึงประวัติการสแกนทั้งหมด
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("""
+                SELECT s.*, m.full_name, m.username
+                FROM scan_logs s
+                LEFT JOIN members m ON s.rfid_id = m.rfid_id
+                ORDER BY s.scan_time DESC
+                LIMIT 100
+            """)
+        else:
+            cursor.execute("""
+                SELECT s.*, m.full_name, m.username
+                FROM scan_logs s
+                LEFT JOIN members m ON s.rfid_id = m.rfid_id
+                ORDER BY s.scan_time DESC
+                LIMIT 100
+            """)
+        
+        scan_history = cursor.fetchall()
+        
+        # แปลงข้อมูลสำหรับ SQLite
+        if isinstance(connection, sqlite3.Connection):
+            scan_history = [dict(scan) for scan in scan_history]
+        
+        connection.close()
+        return render_template('admin_history.html', scan_history=scan_history)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/admin/edit-score', methods=['POST'])
+@login_required
+def admin_edit_score():
+    """แก้ไขคะแนนสมาชิก"""
+    try:
+        data = request.get_json()
+        rfid_id = data.get('rfid_id')
+        new_score = data.get('new_score')
+        
+        if not rfid_id or new_score is None:
+            return jsonify({'success': False, 'message': 'ข้อมูลไม่ครบถ้วน'})
+        
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        
+        cursor = connection.cursor()
+        
+        # อัปเดตคะแนนใน scan_logs (เพิ่มคะแนนให้กับรายการล่าสุด)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("""
+                UPDATE scan_logs 
+                SET score = %s 
+                WHERE rfid_id = %s 
+                AND scan_time = (SELECT MAX(scan_time) FROM scan_logs WHERE rfid_id = %s)
+            """, (new_score, rfid_id, rfid_id))
+        else:
+            cursor.execute("""
+                UPDATE scan_logs 
+                SET score = ? 
+                WHERE rfid_id = ? 
+                AND scan_time = (SELECT MAX(scan_time) FROM scan_logs WHERE rfid_id = ?)
+            """, (new_score, rfid_id, rfid_id))
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return jsonify({'success': True, 'message': 'แก้ไขคะแนนสำเร็จ'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+
+@app.route('/api/admin/delete-member', methods=['POST'])
+@login_required
+def admin_delete_member():
+    """ลบสมาชิก"""
+    try:
+        data = request.get_json()
+        rfid_id = data.get('rfid_id')
+        
+        if not rfid_id:
+            return jsonify({'success': False, 'message': 'ไม่พบ RFID ID'})
+        
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        
+        cursor = connection.cursor()
+        
+        # ลบข้อมูลจาก scan_logs ก่อน
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("DELETE FROM scan_logs WHERE rfid_id = %s", (rfid_id,))
+            cursor.execute("DELETE FROM members WHERE rfid_id = %s", (rfid_id,))
+        else:
+            cursor.execute("DELETE FROM scan_logs WHERE rfid_id = ?", (rfid_id,))
+            cursor.execute("DELETE FROM members WHERE rfid_id = ?", (rfid_id,))
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return jsonify({'success': True, 'message': 'ลบสมาชิกสำเร็จ'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+
 @app.route('/members', methods=['GET'])
 def members():
     """หน้าอันดับ - redirect ไปหน้าหลัก"""

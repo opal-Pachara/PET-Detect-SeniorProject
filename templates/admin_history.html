@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PET Detect - ประวัติการสแกน</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .admin-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .history-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(45deg, #6c5ce7, #a29bfe);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        }
+        .back-btn:hover {
+            color: white;
+            transform: translateY(-2px);
+        }
+        .scan-item {
+            border-left: 4px solid #667eea;
+            padding-left: 15px;
+        }
+        .detection-badge {
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .score-badge {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .time-badge {
+            background: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- ปุ่มกลับ -->
+    <a href="/admin" class="back-btn">
+        ← กลับ Admin
+    </a>
+
+    <div class="container mt-5">
+        <!-- หัวข้อหลัก -->
+        <div class="admin-card text-center">
+            <h1 class="display-4 mb-3">ประวัติการสแกน</h1>
+            <p class="lead">ประวัติการสแกนทั้งหมดในระบบ (100 รายการล่าสุด)</p>
+        </div>
+
+        <!-- รายการประวัติ -->
+        {% if scan_history %}
+            {% for scan in scan_history %}
+            <div class="history-card">
+                <div class="scan-item">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="mb-1">
+                                {{ scan.full_name or scan.username or scan.rfid_id }}
+                                <span class="time-badge">{{ scan.scan_time.strftime('%d/%m/%Y %H:%M') if scan.scan_time else '-' }}</span>
+                            </h6>
+                            <small class="text-muted">RFID: {{ scan.rfid_id }}</small>
+                        </div>
+                        <span class="score-badge">+{{ scan.score or 0 }} คะแนน</span>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="detection-results">
+                                {% if scan.bottle_count and scan.bottle_count > 0 %}
+                                    <span class="detection-badge">ขวด: {{ scan.bottle_count }}</span>
+                                {% endif %}
+                                {% if scan.can_count and scan.can_count > 0 %}
+                                    <span class="detection-badge">กระป๋อง: {{ scan.can_count }}</span>
+                                {% endif %}
+                                {% if scan.cap_count and scan.cap_count > 0 %}
+                                    <span class="detection-badge">ฝา: {{ scan.cap_count }}</span>
+                                {% endif %}
+                                {% if scan.label_count and scan.label_count > 0 %}
+                                    <span class="detection-badge">สลาก: {{ scan.label_count }}</span>
+                                {% endif %}
+                                {% if not (scan.bottle_count or scan.can_count or scan.cap_count or scan.label_count) %}
+                                    <span class="text-muted">ไม่พบวัตถุ</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <small class="text-muted">
+                                ID: {{ scan.id }}<br>
+                                {% if scan.image_path %}
+                                    <a href="#" class="text-primary">ดูรูปภาพ</a>
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center">
+                <div class="history-card">
+                    <h4>ยังไม่มีประวัติการสแกน</h4>
+                    <p class="text-muted">ระบบยังไม่มีข้อมูลการสแกน</p>
+                    <a href="/" class="btn btn-primary">ไปหน้าหลัก</a>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- สถิติสรุป -->
+        {% if scan_history %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="history-card">
+                    <h4>สถิติสรุป</h4>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>การสแกนทั้งหมด:</strong> {{ scan_history|length }} ครั้ง
+                        </div>
+                        <div class="col-md-3">
+                            <strong>คะแนนรวม:</strong> {{ scan_history|sum(attribute='score') or 0 }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>ขวดที่พบ:</strong> {{ scan_history|sum(attribute='bottle_count') or 0 }} อัน
+                        </div>
+                        <div class="col-md-3">
+                            <strong>กระป๋องที่พบ:</strong> {{ scan_history|sum(attribute='can_count') or 0 }} อัน
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
