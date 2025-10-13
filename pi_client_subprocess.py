@@ -22,7 +22,7 @@ try:
     LCD_AVAILABLE = True
 except ImportError:
     LCD_AVAILABLE = False
-    print("⚠️ RPLCD not available. LCD disabled.")
+    print("RPLCD not available. LCD disabled.")
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
