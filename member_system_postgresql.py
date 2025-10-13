@@ -461,6 +461,56 @@ def debug_admin():
     except Exception as e:
         return jsonify({'error': str(e)})
 
+@app.route('/api/create-admin', methods=['POST'])
+def create_admin_api():
+    """API endpoint สำหรับสร้าง admin user"""
+    try:
+        print("DEBUG: Creating admin user via API...")
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'})
+        
+        cursor = connection.cursor()
+        
+        # ตรวจสอบว่ามี admin หรือไม่
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("SELECT id FROM members WHERE username = 'admin'")
+        else:
+            cursor.execute("SELECT id FROM members WHERE username = 'admin'")
+        
+        admin_exists = cursor.fetchone()
+        print(f"DEBUG: Admin exists: {admin_exists}")
+        
+        if not admin_exists:
+            # สร้าง admin user
+            admin_password = hash_password('admin123')
+            print(f"DEBUG: Admin password hash: {admin_password}")
+            
+            if isinstance(connection, psycopg2.extensions.connection):
+                cursor.execute("""
+                    INSERT INTO members (rfid_id, username, password_hash, full_name, email, phone)
+                    VALUES ('ADMIN001', 'admin', %s, 'System Administrator', 'admin@petdetect.com', '000-000-0000')
+                """, (admin_password,))
+            else:
+                cursor.execute("""
+                    INSERT INTO members (rfid_id, username, password_hash, full_name, email, phone)
+                    VALUES ('ADMIN001', 'admin', ?, 'System Administrator', 'admin@petdetect.com', '000-000-0000')
+                """, (admin_password,))
+            
+            connection.commit()
+            print("DEBUG: Admin user created successfully")
+            return jsonify({'success': True, 'message': 'Admin user created successfully'})
+        else:
+            print("DEBUG: Admin user already exists")
+            return jsonify({'success': True, 'message': 'Admin user already exists'})
+        
+        cursor.close()
+        connection.close()
+        
+    except Exception as e:
+        print(f"DEBUG: Error creating admin user: {e}")
+        return jsonify({'error': str(e)})
+
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     """หน้า Dashboard"""
