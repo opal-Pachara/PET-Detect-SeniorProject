@@ -585,26 +585,26 @@ def manage_members():
         else:
             cursor = connection.cursor()
         
-        # ดึงข้อมูลสมาชิกทั้งหมด
+        # ดึงข้อมูลสมาชิกจาก scan_logs (แสดงทุกคนที่มีการสแกน)
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("""
-                SELECT m.*, 
+                SELECT s.rfid_id,
                        COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(s.id) as scan_count
-                FROM members m
-                LEFT JOIN scan_logs s ON m.rfid_id = s.rfid_id
-                GROUP BY m.id
-                ORDER BY total_score DESC
+                       COUNT(s.id) as scan_count,
+                       MAX(s.scan_time) as last_scan
+                FROM scan_logs s
+                GROUP BY s.rfid_id
+                ORDER BY total_score DESC, scan_count DESC
             """)
         else:
             cursor.execute("""
-                SELECT m.*, 
+                SELECT s.rfid_id,
                        COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(s.id) as scan_count
-                FROM members m
-                LEFT JOIN scan_logs s ON m.rfid_id = s.rfid_id
-                GROUP BY m.id
-                ORDER BY total_score DESC
+                       COUNT(s.id) as scan_count,
+                       MAX(s.scan_time) as last_scan
+                FROM scan_logs s
+                GROUP BY s.rfid_id
+                ORDER BY total_score DESC, scan_count DESC
             """)
         
         members = cursor.fetchall()
@@ -710,17 +710,6 @@ def admin_edit_score():
                 WHERE rfid_id = %s 
                 AND scan_time = (SELECT MAX(scan_time) FROM scan_logs WHERE rfid_id = %s)
             """, (new_score, rfid_id, rfid_id))
-            
-            # อัปเดตคะแนนรวมในตาราง members
-            cursor.execute("""
-                UPDATE members 
-                SET total_score = (
-                    SELECT COALESCE(SUM(score), 0) 
-                    FROM scan_logs 
-                    WHERE rfid_id = %s
-                )
-                WHERE rfid_id = %s
-            """, (rfid_id, rfid_id))
         else:
             cursor.execute("""
                 UPDATE scan_logs 
@@ -728,17 +717,6 @@ def admin_edit_score():
                 WHERE rfid_id = ? 
                 AND scan_time = (SELECT MAX(scan_time) FROM scan_logs WHERE rfid_id = ?)
             """, (new_score, rfid_id, rfid_id))
-            
-            # อัปเดตคะแนนรวมในตาราง members
-            cursor.execute("""
-                UPDATE members 
-                SET total_score = (
-                    SELECT COALESCE(SUM(score), 0) 
-                    FROM scan_logs 
-                    WHERE rfid_id = ?
-                )
-                WHERE rfid_id = ?
-            """, (rfid_id, rfid_id))
         
         connection.commit()
         cursor.close()
@@ -766,13 +744,11 @@ def admin_delete_member():
         
         cursor = connection.cursor()
         
-        # ลบข้อมูลจาก scan_logs ก่อน
+        # ลบข้อมูลจาก scan_logs (ไม่ต้องลบจาก members เพราะแสดงจาก scan_logs)
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("DELETE FROM scan_logs WHERE rfid_id = %s", (rfid_id,))
-            cursor.execute("DELETE FROM members WHERE rfid_id = %s", (rfid_id,))
         else:
             cursor.execute("DELETE FROM scan_logs WHERE rfid_id = ?", (rfid_id,))
-            cursor.execute("DELETE FROM members WHERE rfid_id = ?", (rfid_id,))
         
         connection.commit()
         cursor.close()

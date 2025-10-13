@@ -253,7 +253,6 @@
         </div>
         
         <div class="actions">
-            <a href="/register" class="btn">เข้าสู่ระบบ</a>
             <button class="btn" onclick="window.location.reload()">รีเฟรชข้อมูล</button>
         </div>
         
@@ -283,18 +282,11 @@
                     {% endfor %}
                 </tbody>
             </table>
-            {% else %}
-            <div class="no-data">
-                <h3>ยังไม่มีสมาชิก</h3>
-                <p>สแกน RFID card เพื่อสมัครสมาชิกอัตโนมัติ</p>
-                <p>หรือ <a href="/register" style="color: #667eea;">สมัครสมาชิกใหม่</a></p>
-            </div>
             {% endif %}
         </div>
     </div>
     
     <div style="text-align: center; margin-top: 20px;">
-        <a href="/" class="btn" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; margin: 5px;">กลับหน้าหลัก</a>
         <button class="refresh-btn" onclick="window.location.reload()">
             รีเฟรช
         </button>

@@ -173,13 +173,14 @@ class PETDetectSubprocess:
                 print(f"LCD display error: {e}")
     
     def lcd_show_results(self, bottle_count, cap_count, label_count, can_count):
-        """แสดงผลการตรวจจับ"""
+        """แสดงผลการตรวจจับพร้อมระบบคะแนนใหม่"""
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string(f"Bottles:{bottle_count} Caps:{cap_count}")
+                # แสดงจำนวนวัตถุที่ตรวจจับได้
+                self.lcd.write_string(f"B:{bottle_count} C:{can_count}")
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string(f"Labels:{label_count} Cans:{can_count}")
+                self.lcd.write_string(f"Cap:{cap_count} L:{label_count}")
             except Exception as e:
                 print(f"LCD display error: {e}")
     
@@ -188,9 +189,9 @@ class PETDetectSubprocess:
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string(f"Card: {card_id}")
+                self.lcd.write_string(f"RFID: {card_id}")
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string(f"Score: {score}")
+                self.lcd.write_string(f"Total: {score} pts")
             except Exception as e:
                 print(f"LCD display error: {e}")
 
@@ -369,16 +370,19 @@ if __name__ == "__main__":
         can_count = result_data.get('can_count', 0)
         cap_count = result_data.get('cap_count', 0)
         label_count = result_data.get('label_count', 0)
-        score = result_data.get('score', 0)
+        
+        # คำนวณคะแนนใหม่ตามระบบใหม่
+        # ขวด PET: +50 คะแนน, กระป๋อง: +100 คะแนน, ฝา: -10 คะแนน, สลาก: -10 คะแนน
+        score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
         
         print("\nการวิเคราะห์ AI:")
         print("=" * 40)
-        print(f"ขวด (Bottles): {bottle_count}")
-        print(f"กระป๋อง (Cans): {can_count}")
-        print(f"ฝา (Caps): {cap_count}")
-        print(f"สลาก (Labels): {label_count}")
+        print(f"ขวด (Bottles): {bottle_count} (+{bottle_count * 50} คะแนน)")
+        print(f"กระป๋อง (Cans): {can_count} (+{can_count * 100} คะแนน)")
+        print(f"ฝา (Caps): {cap_count} ({cap_count * -10} คะแนน)")
+        print(f"สลาก (Labels): {label_count} ({label_count * -10} คะแนน)")
         print(f"จำนวนรวม: {result_data.get('debug_info', {}).get('total_detections', 0)}")
-        print(f"คะแนน: {score}")
+        print(f"คะแนนรวม: {score}")
         print("=" * 40)
         
         # แสดงผลการตรวจจับบน LCD
@@ -396,14 +400,21 @@ if __name__ == "__main__":
     def save_score_to_web(self, card_id, result):
         """บันทึกคะแนนไปยังเว็บ database"""
         try:
+            # คำนวณคะแนนใหม่ตามระบบใหม่
+            bottle_count = result.get('bottle_count', 0)
+            can_count = result.get('can_count', 0)
+            cap_count = result.get('cap_count', 0)
+            label_count = result.get('label_count', 0)
+            score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
+            
             # ใช้ field โดยตรงจาก result_data
             score_data = {
                 'card_id': str(card_id),
-                'bottle_count': result.get('bottle_count', 0),
-                'can_count': result.get('can_count', 0),
-                'cap_count': result.get('cap_count', 0),
-                'label_count': result.get('label_count', 0),
-                'score': result.get('score', 0),
+                'bottle_count': bottle_count,
+                'can_count': can_count,
+                'cap_count': cap_count,
+                'label_count': label_count,
+                'score': score,
                 'image_path': 'captured_image.jpg'
             }
             
