@@ -149,32 +149,57 @@ def login_required(f):
 def create_admin_user():
     """สร้างผู้ดูแลระบบเริ่มต้น"""
     try:
+        print("DEBUG: Creating admin user...")
         connection = get_db_connection()
         if not connection:
+            print("DEBUG: Database connection failed in create_admin_user")
             return False
         
+        print("DEBUG: Database connection successful in create_admin_user")
         cursor = connection.cursor()
         
         # ตรวจสอบว่ามี admin หรือไม่
-        cursor.execute("SELECT id FROM members WHERE username = 'admin'")
+        if isinstance(connection, psycopg2.extensions.connection):
+            print("DEBUG: Checking admin user with PostgreSQL")
+            cursor.execute("SELECT id FROM members WHERE username = 'admin'")
+        else:
+            print("DEBUG: Checking admin user with SQLite")
+            cursor.execute("SELECT id FROM members WHERE username = 'admin'")
+        
         admin_exists = cursor.fetchone()
+        print(f"DEBUG: Admin exists: {admin_exists}")
         
         if not admin_exists:
             # สร้าง admin user
             admin_password = hash_password('admin123')
-            cursor.execute("""
-                INSERT INTO members (rfid_id, username, password_hash, full_name, email, phone)
-                VALUES ('ADMIN001', 'admin', %s, 'System Administrator', 'admin@petdetect.com', '000-000-0000')
-            """, (admin_password,))
-            print("Admin user created: admin / admin123")
+            print(f"DEBUG: Admin password hash: {admin_password}")
+            
+            if isinstance(connection, psycopg2.extensions.connection):
+                cursor.execute("""
+                    INSERT INTO members (rfid_id, username, password_hash, full_name, email, phone)
+                    VALUES ('ADMIN001', 'admin', %s, 'System Administrator', 'admin@petdetect.com', '000-000-0000')
+                """, (admin_password,))
+            else:
+                cursor.execute("""
+                    INSERT INTO members (rfid_id, username, password_hash, full_name, email, phone)
+                    VALUES ('ADMIN001', 'admin', ?, 'System Administrator', 'admin@petdetect.com', '000-000-0000')
+                """, (admin_password,))
+            
+            print("DEBUG: Admin user created: admin / admin123")
+        else:
+            print("DEBUG: Admin user already exists")
         
         connection.commit()
         cursor.close()
         connection.close()
+        print("DEBUG: Admin user creation completed successfully")
         return True
         
     except psycopg2.Error as e:
-        print(f"Create admin user error: {e}")
+        print(f"DEBUG: PostgreSQL error in create_admin_user: {e}")
+        return False
+    except Exception as e:
+        print(f"DEBUG: General error in create_admin_user: {e}")
         return False
 
 @app.route('/', methods=['GET'])
@@ -299,35 +324,54 @@ def admin_login():
         return redirect(url_for('admin_login'))
     
     try:
+        print(f"DEBUG: Attempting login for username: {username}")
         connection = get_db_connection()
         if not connection:
+            print("DEBUG: Database connection failed")
             flash('ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error')
             return redirect(url_for('admin_login'))
         
+        print("DEBUG: Database connection successful")
         cursor = connection.cursor(cursor_factory=RealDictCursor)
         
         # ตรวจสอบผู้ใช้
         if isinstance(connection, psycopg2.extensions.connection):
+            print("DEBUG: Using PostgreSQL query")
             cursor.execute("SELECT id, username, password_hash FROM members WHERE username = %s", (username,))
         else:
+            print("DEBUG: Using SQLite query")
             cursor.execute("SELECT id, username, password_hash FROM members WHERE username = ?", (username,))
         
         user = cursor.fetchone()
+        print(f"DEBUG: User found: {user}")
         
-        if user and verify_password(password, user['password_hash']):
-            session['admin_logged_in'] = True
-            session['admin_username'] = user['username']
-            session['admin_id'] = user['id']
-            flash('เข้าสู่ระบบสำเร็จ', 'success')
-            return redirect(url_for('admin'))
+        if user:
+            print(f"DEBUG: Verifying password for user: {user['username']}")
+            password_valid = verify_password(password, user['password_hash'])
+            print(f"DEBUG: Password valid: {password_valid}")
+            
+            if password_valid:
+                session['admin_logged_in'] = True
+                session['admin_username'] = user['username']
+                session['admin_id'] = user['id']
+                print("DEBUG: Login successful")
+                flash('เข้าสู่ระบบสำเร็จ', 'success')
+                return redirect(url_for('admin'))
+            else:
+                print("DEBUG: Password verification failed")
+                flash('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error')
+                return redirect(url_for('admin_login'))
         else:
+            print("DEBUG: User not found")
             flash('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error')
             return redirect(url_for('admin_login'))
             
     except psycopg2.Error as e:
+        print(f"DEBUG: PostgreSQL error: {e}")
         flash('เกิดข้อผิดพลาดในการเข้าสู่ระบบ', 'error')
         return redirect(url_for('admin_login'))
     except Exception as e:
+        print(f"DEBUG: General error: {e}")
         flash('เกิดข้อผิดพลาดในการเข้าสู่ระบบ', 'error')
         return redirect(url_for('admin_login'))
     finally:
@@ -347,6 +391,43 @@ def admin_logout():
     session.clear()
     flash('ออกจากระบบเรียบร้อย', 'info')
     return redirect(url_for('index'))
+
+@app.route('/api/debug/admin', methods=['GET'])
+def debug_admin():
+    """Debug endpoint สำหรับตรวจสอบ admin user"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'})
+        
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        
+        # ตรวจสอบ admin user
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("SELECT id, username, password_hash, full_name FROM members WHERE username = 'admin'")
+        else:
+            cursor.execute("SELECT id, username, password_hash, full_name FROM members WHERE username = 'admin'")
+        
+        admin_user = cursor.fetchone()
+        
+        # ตรวจสอบจำนวนสมาชิกทั้งหมด
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("SELECT COUNT(*) as count FROM members")
+        else:
+            cursor.execute("SELECT COUNT(*) as count FROM members")
+        
+        member_count = cursor.fetchone()
+        
+        connection.close()
+        
+        return jsonify({
+            'admin_user': dict(admin_user) if admin_user else None,
+            'member_count': member_count['count'] if member_count else 0,
+            'database_type': 'PostgreSQL' if isinstance(connection, psycopg2.extensions.connection) else 'SQLite'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
