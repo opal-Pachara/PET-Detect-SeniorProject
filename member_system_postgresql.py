@@ -401,7 +401,7 @@ def admin_logout():
     """ออกจากระบบ"""
     session.clear()
     flash('ออกจากระบบเรียบร้อย', 'info')
-    return redirect(url_for('index'))
+    return redirect(url_for('admin_login'))
 
 @app.route('/api/debug/admin', methods=['GET'])
 def debug_admin():
