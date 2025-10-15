@@ -1,0 +1,430 @@
+# PET Detect System - Project Diagrams
+# วันที่สร้าง: 13 ตุลาคม 2568
+# ผู้เขียน: AI Assistant
+# เวอร์ชัน: 1.0
+
+================================================================================
+📊 USE CASE DIAGRAM - PET Detect System
+================================================================================
+
+ระบบ PET Detect ประกอบด้วย 3 ส่วนหลัก:
+1. Raspberry Pi Client (ฮาร์ดแวร์)
+2. AI API (Cloud)
+3. Web Score System (Cloud)
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PET Detect System                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐        │
+│  │   User (ผู้ใช้)   │    │  Admin (ผู้ดูแล)  │    │  Pi Client      │        │
+│  │                 │    │                 │    │  (Raspberry Pi) │        │
+│  └─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘        │
+│            │                      │                      │                │
+│            │                      │                      │                │
+│  ┌─────────▼───────┐              │                      │                │
+│  │ ดูตารางคะแนน    │              │                      │                │
+│  │ (Leaderboard)   │              │                      │                │
+│  └─────────────────┘              │                      │                │
+│                                   │                      │                │
+│                                   │                      │                │
+│  ┌─────────────────┐              │                      │                │
+│  │ เข้าสู่ระบบ      │              │                      │                │
+│  │ (Admin Login)   │              │                      │                │
+│  └─────────────────┘              │                      │                │
+│                                   │                      │                │
+│  ┌─────────────────┐              │                      │                │
+│  │ ดูสถิติระบบ      │              │                      │                │
+│  │ (View Stats)    │              │                      │                │
+│  └─────────────────┘              │                      │                │
+│                                   │                      │                │
+│  ┌─────────────────┐              │                      │                │
+│  │ จัดการสมาชิก    │              │                      │                │
+│  │ (Manage Members)│              │                      │                │
+│  └─────────────────┘              │                      │                │
+│                                   │                      │                │
+│  ┌─────────────────┐              │                      │                │
+│  │ ดูประวัติการสแกน│              │                      │                │
+│  │ (View Scan History)│            │                      │                │
+│  └─────────────────┘              │                      │                │
+│                                   │                      │                │
+│  ┌─────────────────┐              │                      │                │
+│  │ แก้ไขคะแนน      │              │                      │                │
+│  │ (Edit Scores)   │              │                      │                │
+│  └─────────────────┘              │                      │                │
+│                                   │                      │                │
+│  ┌─────────────────┐              │                      │                │
+│  │ ลบสมาชิก        │              │                      │                │
+│  │ (Delete Members)│              │                      │                │
+│  └─────────────────┘              │                      │                │
+│                                   │                      │                │
+│                                   │                      │                │
+│                                   │  ┌─────────────────┐ │                │
+│                                   │  │ สแกน RFID      │ │                │
+│                                   │  │ (Scan RFID)    │ │                │
+│                                   │  └─────────────────┘ │                │
+│                                   │                      │                │
+│                                   │  ┌─────────────────┐ │                │
+│                                   │  │ ถ่ายภาพ        │ │                │
+│                                   │  │ (Capture Image)│ │                │
+│                                   │  └─────────────────┘ │                │
+│                                   │                      │                │
+│                                   │  ┌─────────────────┐ │                │
+│                                   │  │ ส่งภาพไป AI API│ │                │
+│                                   │  │ (Send to AI API)│ │                │
+│                                   │  └─────────────────┘ │                │
+│                                   │                      │                │
+│                                   │  ┌─────────────────┐ │                │
+│                                   │  │ ควบคุม Stepper  │ │                │
+│                                   │  │ Motor          │ │                │
+│                                   │  └─────────────────┘ │                │
+│                                   │                      │                │
+│                                   │  ┌─────────────────┐ │                │
+│                                   │  │ บันทึกคะแนน    │ │                │
+│                                   │  │ (Save Score)   │ │                │
+│                                   │  └─────────────────┘ │                │
+│                                   │                      │                │
+│                                   │  ┌─────────────────┐ │                │
+│                                   │  │ แสดงผลบน LCD   │ │                │
+│                                   │  │ (Display on LCD)│ │                │
+│                                   │  └─────────────────┘ │                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+📋 USE CASE DESCRIPTIONS
+================================================================================
+
+🎯 ผู้ใช้ (User):
+- ดูตารางคะแนน (Leaderboard): ดูอันดับคะแนนของสมาชิกทั้งหมด
+
+🔧 ผู้ดูแลระบบ (Admin):
+- เข้าสู่ระบบ: ล็อกอินด้วย username/password
+- ดูสถิติระบบ: ดูสถิติการใช้งานระบบ (สมาชิก, การสแกน, คะแนน)
+- จัดการสมาชิก: ดูรายชื่อสมาชิกที่สแกน RFID แล้ว
+- ดูประวัติการสแกน: ดูประวัติการสแกนทั้งหมด
+- แก้ไขคะแนน: แก้ไขคะแนนของสมาชิก
+- ลบสมาชิก: ลบข้อมูลการสแกนของสมาชิก
+
+🤖 Raspberry Pi Client:
+- สแกน RFID: อ่านบัตร RFID ผ่าน MFRC522
+- ถ่ายภาพ: ถ่ายภาพวัตถุด้วยกล้อง USB
+- ส่งภาพไป AI API: ส่งภาพไปวิเคราะห์บน Cloud
+- ควบคุม Stepper Motor: หมุนมอเตอร์ตามผลการวิเคราะห์
+- บันทึกคะแนน: ส่งข้อมูลคะแนนไป Web Score System
+- แสดงผลบน LCD: แสดงผลการตรวจจับบน LCD 16x2
+
+================================================================================
+🗄️ ENTITY RELATIONSHIP (ER) DIAGRAM
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PET Detect Database                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐                                                       │
+│  │     MEMBERS     │                                                       │
+│  │                 │                                                       │
+│  │ PK: id          │◄─────┐                                               │
+│  │     rfid_id     │      │                                               │
+│  │     username    │      │                                               │
+│  │     password_hash│      │                                               │
+│  │     full_name   │      │                                               │
+│  │     email       │      │                                               │
+│  │     phone       │      │                                               │
+│  │     total_score │      │                                               │
+│  │     created_at  │      │                                               │
+│  │     updated_at  │      │                                               │
+│  └─────────────────┘      │                                               │
+│                           │                                               │
+│                           │ 1:N                                           │
+│                           │                                               │
+│  ┌─────────────────┐      │                                               │
+│  │   SCAN_LOGS     │      │                                               │
+│  │                 │      │                                               │
+│  │ PK: id          │──────┘                                               │
+│  │ FK: rfid_id     │                                                       │
+│  │     bottle_count│                                                       │
+│  │     can_count   │                                                       │
+│  │     cap_count   │                                                       │
+│  │     label_count │                                                       │
+│  │     score       │                                                       │
+│  │     image_path  │                                                       │
+│  │     scan_time   │                                                       │
+│  └─────────────────┘                                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+📊 TABLE DESCRIPTIONS
+================================================================================
+
+🗃️ MEMBERS Table:
+- id: Primary Key (Auto Increment)
+- rfid_id: RFID Card ID (Unique, String)
+- username: Username (String)
+- password_hash: Hashed Password (String)
+- full_name: Full Name (String)
+- email: Email Address (String)
+- phone: Phone Number (String)
+- total_score: Total Score (Integer, Default: 0)
+- created_at: Creation Timestamp
+- updated_at: Last Update Timestamp
+
+🗃️ SCAN_LOGS Table:
+- id: Primary Key (Auto Increment)
+- rfid_id: Foreign Key → MEMBERS.rfid_id (String)
+- bottle_count: Number of Bottles Detected (Integer)
+- can_count: Number of Cans Detected (Integer)
+- cap_count: Number of Caps Detected (Integer)
+- label_count: Number of Labels Detected (Integer)
+- score: Calculated Score (Integer)
+- image_path: Path to Captured Image (String)
+- scan_time: Scan Timestamp
+
+================================================================================
+🔄 SYSTEM FLOW DIAGRAM
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        PET Detect System Flow                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. User touches RFID card                                                 │
+│     ↓                                                                       │
+│  2. Pi Client reads RFID ID                                                │
+│     ↓                                                                       │
+│  3. Pi Client captures image                                               │
+│     ↓                                                                       │
+│  4. Pi Client sends image to AI API                                        │
+│     ↓                                                                       │
+│  5. AI API analyzes image                                                  │
+│     ↓                                                                       │
+│  6. AI API returns detection results                                       │
+│     ↓                                                                       │
+│  7. Pi Client controls Stepper Motor                                       │
+│     ↓                                                                       │
+│  8. Pi Client displays results on LCD                                      │
+│     ↓                                                                       │
+│  9. Pi Client calculates score                                             │
+│     ↓                                                                       │
+│ 10. Pi Client sends score to Web System                                    │
+│     ↓                                                                       │
+│ 11. Web System saves to database                                           │
+│     ↓                                                                       │
+│ 12. Web System updates leaderboard                                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+📈 SCORING SYSTEM
+================================================================================
+
+🎯 New Scoring System:
+- ขวด PET (Bottles): +50 คะแนน
+- กระป๋อง (Cans): +100 คะแนน
+- ฝา (Caps): -10 คะแนน
+- สลาก (Labels): -10 คะแนน
+
+📊 Score Calculation Formula:
+Score = (bottle_count × 50) + (can_count × 100) - (cap_count × 10) - (label_count × 10)
+
+📝 Example:
+- ขวด 2 อัน = +100 คะแนน
+- กระป๋อง 1 อัน = +100 คะแนน
+- ฝา 1 อัน = -10 คะแนน
+- สลาก 0 อัน = 0 คะแนน
+- รวม = 190 คะแนน
+
+================================================================================
+🔧 TECHNICAL ARCHITECTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        System Architecture                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐        │
+│  │ Raspberry Pi    │    │ AI API (Cloud)  │    │ Web System      │        │
+│  │                 │    │                 │    │ (Cloud)         │        │
+│  │ - RFID Reader   │    │ - YOLO Model    │    │ - Flask App     │        │
+│  │ - Camera        │    │ - Image Analysis│    │ - PostgreSQL    │        │
+│  │ - Stepper Motor │    │ - Object Detection│   │ - Web Interface │        │
+│  │ - LCD Display   │    │                 │    │ - Admin Panel   │        │
+│  │ - LED           │    │                 │    │                 │        │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘        │
+│            │                      │                      │                │
+│            │ HTTPS                │ HTTPS                │                │
+│            │                      │                      │                │
+│            └──────────────────────┼──────────────────────┘                │
+│                                   │                                        │
+│                                   │                                        │
+│  ┌─────────────────┐              │                                        │
+│  │ User Interface  │              │                                        │
+│  │ - Leaderboard   │              │                                        │
+│  │ - Admin Panel   │              │                                        │
+│  │ - Mobile/Desktop│              │                                        │
+│  └─────────────────┘              │                                        │
+│                                   │                                        │
+│  ┌─────────────────┐              │                                        │
+│  │ Hardware        │              │                                        │
+│  │ - MFRC522 RFID  │              │                                        │
+│  │ - USB Camera    │              │                                        │
+│  │ - A4988 Driver  │              │                                        │
+│  │ - Stepper Motor │              │                                        │
+│  │ - LCD 16x2      │              │                                        │
+│  │ - LED + Relay   │              │                                        │
+│  └─────────────────┘              │                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+🌐 API ENDPOINTS
+================================================================================
+
+🤖 AI API (minimal_api_cloud.py):
+- POST /api/scan - Image analysis endpoint
+
+🌐 Web Score System (member_system_postgresql.py):
+- GET / - Leaderboard page
+- GET/POST /admin/login - Admin login
+- GET /admin - Admin dashboard
+- GET /admin/logout - Logout
+- GET /stats - System statistics
+- GET /manage_members - Member management
+- GET /scan_history - Scan history
+- POST /api/add_score - Add score from Pi
+- POST /api/admin/edit-score - Edit score
+- POST /api/admin/delete-member - Delete member
+- GET /api/debug/admin - Debug admin user
+- POST /api/create-admin - Create admin user
+
+================================================================================
+📱 USER INTERFACE PAGES
+================================================================================
+
+🖥️ Web Interface:
+1. Leaderboard Page (/) - แสดงตารางคะแนน
+2. Admin Login Page - หน้าล็อกอินผู้ดูแล
+3. Admin Dashboard - หน้าผู้ดูแลระบบ
+4. Statistics Page - หน้าสถิติระบบ
+5. Member Management Page - หน้าจัดการสมาชิก
+6. Scan History Page - หน้าประวัติการสแกน
+
+📺 LCD Display (16x2):
+- Line 1: "กรุณาแตะบัตร" / "RFID: 1234567890"
+- Line 2: "Waiting..." / "Total: 190 pts"
+
+================================================================================
+🔌 HARDWARE CONNECTIONS
+================================================================================
+
+🔌 Raspberry Pi GPIO Connections:
+- GPIO 4 → LED (ผ่าน Relay)
+- GPIO 18 → Stepper Motor (Step)
+- GPIO 19 → Stepper Motor (Direction)
+- I2C → LCD Display (Address 0x27)
+- SPI → RFID Reader (MFRC522)
+- USB → Camera
+
+⚡ Power Requirements:
+- Raspberry Pi: 5V/3A (USB-C)
+- Stepper Motor: 12V/24V (External Power Supply)
+- LCD Display: 5V (I2C)
+- RFID Reader: 3.3V (SPI)
+- LED: 5V (ผ่าน Relay)
+
+================================================================================
+📊 DATABASE SCHEMA (SQL)
+================================================================================
+
+-- PostgreSQL/SQLite Schema
+CREATE TABLE members (
+    id SERIAL PRIMARY KEY,                    -- PostgreSQL
+    -- id INTEGER PRIMARY KEY AUTOINCREMENT,  -- SQLite
+    rfid_id VARCHAR(50) UNIQUE NOT NULL,      -- PostgreSQL
+    -- rfid_id TEXT UNIQUE NOT NULL,          -- SQLite
+    username VARCHAR(100),                    -- PostgreSQL
+    -- username TEXT,                         -- SQLite
+    password_hash VARCHAR(255),               -- PostgreSQL
+    -- password_hash TEXT,                    -- SQLite
+    full_name VARCHAR(200),                   -- PostgreSQL
+    -- full_name TEXT,                        -- SQLite
+    email VARCHAR(100),                       -- PostgreSQL
+    -- email TEXT,                            -- SQLite
+    phone VARCHAR(20),                        -- PostgreSQL
+    -- phone TEXT,                            -- SQLite
+    total_score INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE scan_logs (
+    id SERIAL PRIMARY KEY,                    -- PostgreSQL
+    -- id INTEGER PRIMARY KEY AUTOINCREMENT,  -- SQLite
+    rfid_id VARCHAR(50) NOT NULL,             -- PostgreSQL
+    -- rfid_id TEXT NOT NULL,                 -- SQLite
+    bottle_count INTEGER DEFAULT 0,
+    can_count INTEGER DEFAULT 0,
+    cap_count INTEGER DEFAULT 0,
+    label_count INTEGER DEFAULT 0,
+    score INTEGER DEFAULT 0,
+    image_path VARCHAR(500),                  -- PostgreSQL
+    -- image_path TEXT,                       -- SQLite
+    scan_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Foreign Key Relationship
+ALTER TABLE scan_logs ADD CONSTRAINT fk_scan_logs_rfid_id 
+FOREIGN KEY (rfid_id) REFERENCES members(rfid_id);
+
+================================================================================
+🚀 DEPLOYMENT INFORMATION
+================================================================================
+
+☁️ Cloud Services:
+- AI API: Render.com (https://pet-detect-ai-api.onrender.com)
+- Web Score System: Render.com (https://pet-detect-seniorproject-1.onrender.com)
+- Database: PostgreSQL (Render) / SQLite (fallback)
+
+🔧 Local Development:
+- Raspberry Pi: Raspberry Pi OS
+- Python: 3.9+
+- Dependencies: requirements.txt
+
+📦 Key Dependencies:
+- Flask: Web framework
+- ultralytics: YOLO model
+- OpenCV: Image processing
+- RPi.GPIO: GPIO control
+- psycopg2: PostgreSQL connector
+- requests: HTTP client
+
+================================================================================
+📝 NOTES
+================================================================================
+
+🎯 System Goals:
+1. อัตโนมัติการแยกขยะ PET
+2. ให้คะแนนตามมูลค่าการรีไซเคิล
+3. ติดตามสถิติการใช้งาน
+4. จัดการสมาชิกและคะแนน
+
+🔧 Technical Features:
+- Real-time object detection
+- RFID-based user identification
+- Automatic motor control
+- Cloud-based data storage
+- Responsive web interface
+- Admin management system
+
+📈 Future Enhancements:
+- Mobile app integration
+- Advanced analytics dashboard
+- Multi-language support
+- IoT sensor integration
+- Machine learning improvements
+
+================================================================================
+🎉 END OF DOCUMENT
+================================================================================

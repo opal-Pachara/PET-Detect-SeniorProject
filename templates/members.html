@@ -246,10 +246,6 @@
                 <div class="stat-number">{{ members|sum(attribute='total_score') or 0 }}</div>
                 <div class="stat-label">คะแนนรวมทั้งหมด</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-number">{{ members|max(attribute='total_score')|int if members else 0 }}</div>
-                <div class="stat-label">คะแนนสูงสุด</div>
-            </div>
         </div>
         
         <div class="actions">
