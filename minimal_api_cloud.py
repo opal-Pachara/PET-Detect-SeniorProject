@@ -65,44 +65,6 @@ except Exception as e:
             logger.error(f"Failed to load YOLOv8n model: {e3}")
             model = None
 
-@app.route('/', methods=['GET'])
-def root():
-    """Root endpoint"""
-    return jsonify({
-        'status': 'ok',
-        'message': 'PET Detect API is running',
-        'model_loaded': model is not None,
-        'endpoints': ['/api/ping', '/api/scan', '/api/model-info']
-    })
-
-@app.route('/api/ping', methods=['GET'])
-def ping():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'ok',
-        'message': 'PET Detect API is running',
-        'model_loaded': model is not None
-    })
-
-@app.route('/api/model-info', methods=['GET'])
-def model_info():
-    """Model information endpoint"""
-    if model:
-        return jsonify({
-            'model_path': 'model-yolov5s/best.pt',
-            'model_loaded': True,
-            'model_status': 'Loaded',
-            'model_classes': list(model.names.values()),
-            'model_classes_dict': dict(model.names),
-            'model_classes_count': len(model.names)
-        })
-    else:
-        return jsonify({
-            'model_path': 'model-yolov5s/best.pt',
-            'model_loaded': False,
-            'model_status': 'Failed',
-            'error': 'Model not loaded'
-        })
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
@@ -161,18 +123,18 @@ def scan():
                         # แก้ไข class names ให้ตรงกับ model
                         if class_name in ["Bottle", "bottle", "ขวด"]:
                             bottles += 1
-                            logger.info(f"✅ Counted bottle: {class_name}")
+                            logger.info(f"Counted bottle: {class_name}")
                         elif class_name in ["Cap", "cap", "ฝา"]:
                             caps += 1
-                            logger.info(f"✅ Counted cap: {class_name}")
+                            logger.info(f"Counted cap: {class_name}")
                         elif class_name in ["Label", "label", "ฉลาก"]:
                             labels += 1
-                            logger.info(f"✅ Counted label: {class_name}")
+                            logger.info(f"Counted label: {class_name}")
                         elif class_name in ["Can", "can", "กระป๋อง"]:
                             cans += 1
-                            logger.info(f"✅ Counted can: {class_name}")
+                            logger.info(f"Counted can: {class_name}")
                         else:
-                            logger.info(f"❓ Unknown class: {class_name} (confidence: {confidence:.3f})")
+                            logger.info(f"Unknown class: {class_name} (confidence: {confidence:.3f})")
                     else:
                         logger.info(f"Low confidence detection: {class_name} ({confidence:.3f})")
         
@@ -222,8 +184,6 @@ if __name__ == '__main__':
     print(f"Model status: {'Loaded' if model else 'Failed'}")
     print("Available endpoints:")
     print("   - POST /api/scan - Image analysis")
-    print("   - GET /api/ping - Health check")
-    print("   - GET /api/model-info - Model information")
     print("Press Ctrl+C to stop")
     
     # Use gunicorn for production (don't run Flask directly on cloud)

@@ -28,7 +28,7 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-API_URL = "https://pet-detect-ai-api.onrender.com"  # AI API บน Cloud
+API_URL = "https://pet-detect-ai-api.onrender.com"  # AI API
 
 class PETDetectSubprocess:
     def __init__(self, api_url=API_URL):
@@ -36,7 +36,7 @@ class PETDetectSubprocess:
         self.running = True
         self.camera = None
         self.stepper = None
-        self.led_pin = 4   # GPIO 4 สำหรับ LED (ต่อกับ Relay)
+        self.led_pin = 4   # GPIO 4 สำหรับ LED
         self.lcd = None    # LCD Display
         
         # Signal handler
@@ -54,13 +54,13 @@ class PETDetectSubprocess:
         
         # Initialize Stepper Motor
         try:
-            print("กำลัง initialize Stepper Motor...")
+            print("เริ่ม Stepper Motor")
             self.stepper = StepperMotorController(
                 step_pin=18,
                 dir_pin=19,
                 enable_pin=None
             )
-            print("Stepper Motor พร้อมใช้งาน")
+            print("Stepper Motor พร้อม")
         except Exception as e:
             print(f"Stepper Error: {e}")
             self.stepper = None
@@ -155,7 +155,7 @@ class PETDetectSubprocess:
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string("RFID Card:")
+                self.lcd.write_string("RFID:")
                 self.lcd.cursor_pos = (1, 0)
                 self.lcd.write_string(f"{card_id}")
             except Exception as e:
@@ -196,7 +196,7 @@ class PETDetectSubprocess:
                 print(f"LCD display error: {e}")
 
     def signal_handler(self, signum, frame):
-        print("\nกำลังหยุดระบบ...")
+        print("\nกำลังหยุดระบบ")
         self.running = False
         self.cleanup()
         sys.exit(0)
@@ -241,7 +241,7 @@ if __name__ == "__main__":
     
     def read_rfid_subprocess(self, timeout=30):
         """อ่าน RFID ผ่าน subprocess"""
-        print(f"รอการสแกน RFID card (timeout: {timeout} วินาที)...")
+        print(f"รอสแกน RFID card (timeout: {timeout} วินาที)...")
         print("วางบัตร RFID ใกล้ตัวอ่าน...")
         
         start_time = time.time()
@@ -290,7 +290,7 @@ if __name__ == "__main__":
             self.camera = cv2.VideoCapture(0)
             
             if not self.camera.isOpened():
-                print("ไม่สามารถเปิดกล้องได้")
+                print("เปิดกล้องไม่ได้")
                 return False
             
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -345,8 +345,8 @@ if __name__ == "__main__":
             
             if response.status_code == 200:
                 result = response.json()
-                print("ได้รับผลจาก API")
-                print(f"🔍 API Response: {result}")
+                print("ผลจาก API")
+                print(f"API Response: {result}")
                 return result
             else:
                 print(f"API Error: {response.status_code}")
@@ -359,19 +359,18 @@ if __name__ == "__main__":
     def process_scan_result(self, result_data, card_id=None):
         """แสดงผลการวิเคราะห์และบันทึกคะแนน"""
         if not result_data or not result_data.get('success'):
-            print("ไม่ได้รับผลการวิเคราะห์")
+            print("ไม่ได้รับผล")
             return
         
-        # LED ติดค้างอยู่แล้ว ไม่ต้องกระพริบ
-        # self.led_blink(times=2, interval=0.3)
-        
+       
+
         # ใช้ result_data โดยตรง ไม่ต้อง get('result')
         bottle_count = result_data.get('bottle_count', 0)
         can_count = result_data.get('can_count', 0)
         cap_count = result_data.get('cap_count', 0)
         label_count = result_data.get('label_count', 0)
         
-        # คำนวณคะแนนใหม่ตามระบบใหม่
+        
         # ขวด PET: +50 คะแนน, กระป๋อง: +100 คะแนน, ฝา: -10 คะแนน, สลาก: -10 คะแนน
         score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
         
@@ -385,7 +384,7 @@ if __name__ == "__main__":
         print(f"คะแนนรวม: {score}")
         print("=" * 40)
         
-        # แสดงผลการตรวจจับบน LCD
+        # แสดงผลตรวจจับบน LCD
         self.lcd_show_results(bottle_count, cap_count, label_count, can_count)
         time.sleep(3)
         
@@ -393,7 +392,7 @@ if __name__ == "__main__":
         if card_id:
             self.lcd_show_score(card_id, score)
         
-        # บันทึกคะแนนไปยังเว็บ (ถ้ามี card_id)
+        # บันทึกคะแนนไปยังเว็บ
         if card_id:
             self.save_score_to_web(card_id, result_data)
     
@@ -418,7 +417,7 @@ if __name__ == "__main__":
                 'image_path': 'captured_image.jpg'
             }
             
-            print(f"📊 Score Data: {score_data}")
+            print(f"Score Data: {score_data}")
             logger.info(f"Score data to send: {score_data}")
             
             # ส่งไปยัง Member System API (บน Cloud) - พร้อม retry
@@ -428,15 +427,15 @@ if __name__ == "__main__":
                     web_response = self.session.post(
                         'https://pet-detect-seniorproject-1.onrender.com/api/add_score',  # Cloud Web Score System
                         json=score_data,
-                        timeout=30  # เพิ่ม timeout สำหรับ cloud
+                        timeout=30  # timeout สำหรับ cloud
                     )
                     
                     if web_response.status_code == 200:
-                        print("บันทึกคะแนนลงเว็บสำเร็จ")
+                        print("บันทึกคะแนนสำเร็จ")
                         logger.info(f"Score saved to web: Card {card_id}, Score {result.get('score', 0)}")
                         return  # สำเร็จแล้ว
                     else:
-                        print(f"ไม่สามารถบันทึกคะแนนลงเว็บได้: {web_response.status_code} (attempt {attempt + 1})")
+                        print(f"ไม่สามารถบันทึกคะแนนได้: {web_response.status_code} (attempt {attempt + 1})")
                         
                 except Exception as e:
                     print(f"Web score save error (attempt {attempt + 1}): {e}")
@@ -464,37 +463,36 @@ if __name__ == "__main__":
         
         print("\nการควบคุม Stepper Motor:")
         print("=" * 35)
-        print(f"🔍 Debug - bottle_count: {bottle_count}, can_count: {can_count}")
-        print(f"🔍 Debug - result_data keys: {list(result_data.keys())}")
+        print(f"Debug - bottle_count: {bottle_count}, can_count: {can_count}")
+        print(f"Debug - result_data keys: {list(result_data.keys())}")
         
         try:
             if bottle_count > 0 and can_count > 0:
                 print(f"พบทั้งขวด ({bottle_count}) และกระป๋อง ({can_count})")
-                print("หมุนขวา 90° (ค่อย ๆ หมุน)")
-                self.stepper.move_degrees(90, speed=150)  # ลดเป็น 150 steps/sec (ค่อย ๆ)
+                print("หมุนขวา")
+                self.stepper.move_degrees(90, speed=150)  # 150 steps/sec
                 time.sleep(2)
                 
             elif bottle_count > 0:
                 print(f"พบขวด ({bottle_count} อัน)")
-                print("หมุนซ้าย 90° (ค่อย ๆ หมุน)")
-                self.stepper.move_degrees(-90, speed=150)  # ลดเป็น 150 steps/sec (ค่อย ๆ)
+                print("หมุนซ้าย")
+                self.stepper.move_degrees(-90, speed=150)  # 150 steps/sec
                 time.sleep(2)
                 
             elif can_count > 0:
                 print(f"พบกระป๋อง ({can_count} อัน)")
-                print("หมุนขวา 90° (ค่อย ๆ หมุน)")
-                self.stepper.move_degrees(90, speed=150)  # ลดเป็น 150 steps/sec (ค่อย ๆ)
+                print("หมุนขวา")
+                self.stepper.move_degrees(90, speed=150)  # 150 steps/sec
                 time.sleep(2)
             else:
                 print("ไม่พบขวดหรือกระป๋อง")
                 return
             
             # กลับตำแหน่งเดิม
-            print("หมุนกลับตำแหน่งเริ่มต้น (ค่อย ๆ)...")
+            print("หมุนกลับตำแหน่งเริ่มต้น")
             self.stepper.return_to_home(speed=200)  # ความเร็วกลับบ้านค่อย ๆ
             time.sleep(1)
             
-            print("ควบคุม Stepper Motor เสร็จสิ้น")
             
         except Exception as e:
             print(f"Stepper control error: {e}")
@@ -503,7 +501,7 @@ if __name__ == "__main__":
     
     def run_single_scan(self):
         """รันการสแกนครั้งเดียว"""
-        print("\nเริ่มกระบวนการสแกน PET")
+        print("\nเริ่มการสแกน")
         print("=" * 50)
         
         # แสดงสถานะรอการแตะบัตร
@@ -551,7 +549,7 @@ if __name__ == "__main__":
     
     def run_continuous_scan_system(self):
         """รันระบบสแกนต่อเนื่อง"""
-        print("ระบบสแกน PET (Subprocess RFID)")
+        print("ระบบสแกน PET ")
         print("กด Ctrl+C เพื่อหยุด")
         print("=" * 60)
         
@@ -574,10 +572,10 @@ if __name__ == "__main__":
                 success = self.run_single_scan()
                 
                 if success:
-                    print("รอ 3 วินาทีก่อนรอบต่อไป...")
+                    print("รอ 3 วินาที")
                     time.sleep(3)
                 else:
-                    print("รอ 2 วินาทีก่อนลองใหม่...")
+                    print("รอ 2 วินาที")
                     time.sleep(2)
                 
             except KeyboardInterrupt:
@@ -605,7 +603,7 @@ if __name__ == "__main__":
                 except:
                     pass
             
-            # ปิด LED ก่อนจบ (Direct Connection)
+            # ปิด LED ก่อนจบ
             try:
                 GPIO.output(self.led_pin, GPIO.LOW)   # ปิด LED
                 print("LED turned OFF")
@@ -622,14 +620,14 @@ if __name__ == "__main__":
 
 def main():
     """Main function"""
-    print("PET Detect System - Subprocess RFID Method")
+    print("PET Detect System")
     print("=" * 60)
     
     client = PETDetectSubprocess(api_url=API_URL)
     
-    print("System พร้อมใช้งาน!")
+    print("System พร้อม")
     print("\nวิธีการทำงาน:")
-    print("- RFID: ใช้ subprocess (แยก process)")
+    print("- RFID: ใช้ subprocess")
     print("- Camera: ภายใน main process")
     print("- Stepper: ภายใน main process")
     print("- API: ภายใน main process")
