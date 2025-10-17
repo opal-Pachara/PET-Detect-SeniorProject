@@ -28,9 +28,9 @@ class StepperMotorController:
         
         # Professional Driver Settings
         # Micro step จะตั้งค่าผ่าน DIP switches บน driver แล้ว
-        # SW2=OFF, SW3=OFF, SW6=OFF → ประมาณ 800-1600 steps/rev
+        # SW2=OFF, SW3=OFF, SW6=OFF
         self.steps_per_revolution = 1600  # ปรับตาม DIP switch ที่ตั้งจริง (SW2,3,6=OFF)
-        self.current_position = 0  # ตำแหน่งปัจจุบัน (steps)
+        self.current_position = 0  # ตำแหน่งปัจจุบัน
         
         # Setup GPIO
         self.setup_gpio()
@@ -129,9 +129,9 @@ class StepperMotorController:
     
     
     def return_to_home(self, speed=1200):
-        """กลับไปตำแหน่งเริ่มต้น (position 0)"""
+        """กลับไปตำแหน่งเริ่มต้น"""
         if self.current_position == 0:
-            print("อยู่ตำแหน่งเริ่มต้นแล้ว")
+            print("อยู่ตำแหน่งเริ่มต้น")
             return
         
         steps_to_home = abs(self.current_position)
@@ -145,7 +145,7 @@ class StepperMotorController:
     
     
     def cleanup(self):
-        """ปิดการใช้งาน stepper motor"""
+        """ปิด motor"""
         try:
             if self.enable_pin is not None:
                 GPIO.output(self.enable_pin, GPIO.HIGH)  # HIGH = disable
