@@ -499,6 +499,135 @@ def create_admin_api():
         print(f"DEBUG: Error creating admin user: {e}")
         return jsonify({'error': str(e)})
 
+@app.route('/api/debug_data', methods=['GET'])
+def debug_data():
+    """API endpoint สำหรับดูข้อมูลในฐานข้อมูลโดยตรง"""
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'})
+        
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
+        
+        # ตรวจสอบตารางที่มีอยู่
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+            """)
+        else:
+            cursor.execute("""
+                SELECT name as table_name 
+                FROM sqlite_master 
+                WHERE type='table'
+            """)
+        
+        tables = cursor.fetchall()
+        
+        # ข้อมูลจาก scan_logs
+        cursor.execute("""
+            SELECT 
+                rfid_id,
+                SUM(score) as total_score,
+                COUNT(*) as scan_count,
+                MAX(scan_time) as last_scan,
+                SUM(bottle_count) as total_bottles,
+                SUM(can_count) as total_cans,
+                SUM(cap_count) as total_caps,
+                SUM(label_count) as total_labels
+            FROM scan_logs 
+            GROUP BY rfid_id 
+            ORDER BY total_score DESC
+        """)
+        
+        members_data = cursor.fetchall()
+        
+        # แปลงข้อมูลสำหรับ SQLite
+        if isinstance(connection, sqlite3.Connection):
+            members_data = [dict(row) for row in members_data]
+            tables = [dict(row) for row in tables]
+        
+        # ประวัติการสแกนล่าสุด 10 รายการ
+        cursor.execute("""
+            SELECT 
+                id,
+                rfid_id,
+                bottle_count,
+                can_count,
+                cap_count,
+                label_count,
+                score,
+                scan_time
+            FROM scan_logs 
+            ORDER BY scan_time DESC 
+            LIMIT 10
+        """)
+        
+        recent_scans = cursor.fetchall()
+        
+        # แปลงข้อมูลสำหรับ SQLite
+        if isinstance(connection, sqlite3.Connection):
+            recent_scans = [dict(row) for row in recent_scans]
+        
+        # สถิติรวม
+        cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_users FROM scan_logs")
+        total_users_row = cursor.fetchone()
+        
+        cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
+        total_scans_row = cursor.fetchone()
+        
+        cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
+        total_score_row = cursor.fetchone()
+        
+        # แปลงข้อมูลสำหรับ SQLite
+        if isinstance(connection, sqlite3.Connection):
+            total_users = total_users_row['total_users'] if total_users_row else 0
+            total_scans = total_scans_row['total_scans'] if total_scans_row else 0
+            total_score = total_score_row['total_score'] if total_score_row else 0
+        else:
+            total_users = total_users_row['total_users'] if total_users_row else 0
+            total_scans = total_scans_row['total_scans'] if total_scans_row else 0
+            total_score = total_score_row['total_score'] if total_score_row else 0
+        
+        # ข้อมูล admin users
+        cursor.execute("SELECT username, created_at FROM admin_users")
+        admin_users = cursor.fetchall()
+        
+        # แปลงข้อมูลสำหรับ SQLite
+        if isinstance(connection, sqlite3.Connection):
+            admin_users = [dict(row) for row in admin_users]
+        
+        # ตรวจสอบ database type
+        database_type = "PostgreSQL" if isinstance(connection, psycopg2.extensions.connection) else "SQLite"
+        
+        connection.close()
+        
+        return jsonify({
+            'success': True,
+            'database_type': database_type,
+            'tables': [table['table_name'] for table in tables],
+            'statistics': {
+                'total_users': total_users,
+                'total_scans': total_scans,
+                'total_score': total_score
+            },
+            'members_data': members_data,
+            'recent_scans': recent_scans,
+            'admin_users': admin_users,
+            'message': 'Debug data retrieved successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'Failed to retrieve debug data'
+        })
+
 
 @app.route('/stats', methods=['GET'])
 @login_required
@@ -822,6 +951,7 @@ if __name__ == '__main__':
     print("   - POST /api/admin/delete-member - ลบสมาชิก")
     print("   - GET  /api/debug/admin     - ตรวจสอบ admin user")
     print("   - POST /api/create-admin    - สร้าง admin user")
+    print("   - GET  /api/debug_data      - ดูข้อมูลฐานข้อมูลโดยตรง")
     print("Press Ctrl+C to stop")
     
     # Initialize database
