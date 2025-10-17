@@ -747,17 +747,15 @@ def scan_history():
         # ดึงประวัติการสแกนทั้งหมด
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("""
-                SELECT s.*, m.full_name, m.username
+                SELECT s.*, s.rfid_id as full_name, s.rfid_id as username
                 FROM scan_logs s
-                LEFT JOIN members m ON s.rfid_id = m.rfid_id
                 ORDER BY s.scan_time DESC
                 LIMIT 100
             """)
         else:
             cursor.execute("""
-                SELECT s.*, m.full_name, m.username
+                SELECT s.*, s.rfid_id as full_name, s.rfid_id as username
                 FROM scan_logs s
-                LEFT JOIN members m ON s.rfid_id = m.rfid_id
                 ORDER BY s.scan_time DESC
                 LIMIT 100
             """)
