@@ -56,7 +56,7 @@ PET-Detect-SeniorProject/
 │   ├── api.py                 # AI API (Flask)
 │   ├── main.py               # Main app
 │   └── ...
-├── model-yolov5s/
+├── model-yolov11/
 │   └── best.pt               # YOLOv5 model
 ├── templates/
 │   ├── login.html            # หน้า Login
@@ -181,7 +181,7 @@ RFID:
 3. ตรวจสอบ network connection
 
 ### AI Model Error
-1. ตรวจสอบไฟล์ `model-yolov5s/best.pt`
+1. ตรวจสอบไฟล์ `model-yolov11/best.pt`
 2. ตรวจสอบ dependencies: `torch`, `ultralytics`
 
 ## 👥 Contributors

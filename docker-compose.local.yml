@@ -8,7 +8,7 @@ services:
     environment:
       - FLASK_ENV=production
     volumes:
-      - ./model-yolov5s:/app/model-yolov5s:ro  # Mount model directory
+      - ./model-yolov11:/app/model-yolov11:ro  # Mount model directory
       - ./logs:/app/logs  # Mount logs directory
     restart: unless-stopped
     healthcheck:
