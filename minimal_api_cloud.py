@@ -115,28 +115,65 @@ def scan():
                     class_name = result.names[class_id]
                     confidence = float(box.conf[0])
                     
-                    logger.info(f"Detection {i+1}: class='{class_name}' (id={class_id}), confidence={confidence:.3f}")
-                    logger.info(f"  Class name type: {type(class_name)}, value: '{class_name}'")
+                    # คำนวณขนาดของ bounding box
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    width = x2 - x1
+                    height = y2 - y1
+                    area = width * height
                     
-                    # ลด threshold เป็น 0.1 เพื่อดู detections ทั้งหมด
-                    if confidence > 0.1:
-                        # แก้ไข class names ให้ตรงกับ model
+                    logger.info(f"Detection {i+1}: class='{class_name}' (id={class_id}), confidence={confidence:.3f}")
+                    logger.info(f"  Box size: {width:.1f}x{height:.1f}, area: {area:.1f}")
+                    
+                    # คำนวณอัตราส่วนกว้าง/สูง
+                    aspect_ratio = width / height if height > 0 else 0
+                    
+                    # เพิ่ม threshold เป็น 0.6 และตรวจสอบขนาดวัตถุ
+                    if confidence > 0.6 and area > 1000:  # วัตถุต้องมีขนาดใหญ่พอ
+                        # ตรวจสอบอัตราส่วนตามประเภทวัตถุ
+                        is_valid_object = False
+                        
                         if class_name in ["Bottle", "bottle", "ขวด"]:
-                            bottles += 1
-                            logger.info(f"Counted bottle: {class_name}")
-                        elif class_name in ["Cap", "cap", "ฝา"]:
-                            caps += 1
-                            logger.info(f"Counted cap: {class_name}")
-                        elif class_name in ["Label", "label", "ฉลาก"]:
-                            labels += 1
-                            logger.info(f"Counted label: {class_name}")
+                            # ขวด PET ควรมีอัตราส่วนประมาณ 0.3-0.8 (สูงมากกว่ากว้าง)
+                            if 0.3 <= aspect_ratio <= 0.8:
+                                bottles += 1
+                                is_valid_object = True
+                                logger.info(f"Counted bottle: {class_name} (aspect: {aspect_ratio:.2f})")
+                            else:
+                                logger.info(f"Invalid bottle aspect ratio: {aspect_ratio:.2f}")
+                                
                         elif class_name in ["Can", "can", "กระป๋อง"]:
-                            cans += 1
-                            logger.info(f"Counted can: {class_name}")
-                        else:
-                            logger.info(f"Unknown class: {class_name} (confidence: {confidence:.3f})")
+                            # กระป๋องควรมีอัตราส่วนประมาณ 0.4-0.9 (สูงมากกว่ากว้าง)
+                            if 0.4 <= aspect_ratio <= 0.9:
+                                cans += 1
+                                is_valid_object = True
+                                logger.info(f"Counted can: {class_name} (aspect: {aspect_ratio:.2f})")
+                            else:
+                                logger.info(f"Invalid can aspect ratio: {aspect_ratio:.2f}")
+                                
+                        elif class_name in ["Cap", "cap", "ฝา"]:
+                            # ฝาควรมีอัตราส่วนประมาณ 0.8-1.2 (เกือบกลม)
+                            if 0.8 <= aspect_ratio <= 1.2:
+                                caps += 1
+                                is_valid_object = True
+                                logger.info(f"Counted cap: {class_name} (aspect: {aspect_ratio:.2f})")
+                            else:
+                                logger.info(f"Invalid cap aspect ratio: {aspect_ratio:.2f}")
+                                
+                        elif class_name in ["Label", "label", "ฉลาก"]:
+                            # ฉลากควรมีอัตราส่วนประมาณ 1.5-3.0 (กว้างมากกว่าสูง)
+                            if 1.5 <= aspect_ratio <= 3.0:
+                                labels += 1
+                                is_valid_object = True
+                                logger.info(f"Counted label: {class_name} (aspect: {aspect_ratio:.2f})")
+                            else:
+                                logger.info(f"Invalid label aspect ratio: {aspect_ratio:.2f}")
+                        
+                        if not is_valid_object:
+                            logger.info(f"Object rejected due to invalid aspect ratio: {class_name} ({aspect_ratio:.2f})")
                     else:
-                        logger.info(f"Low confidence detection: {class_name} ({confidence:.3f})")
+                        logger.info(f"Unknown class: {class_name} (confidence: {confidence:.3f})")
+                else:
+                    logger.info(f"Low confidence or small object: {class_name} (confidence: {confidence:.3f}, area: {area:.1f})")
         
         # Calculate score
         score = (bottles * 50) + (caps * 10) + (labels * 5) + (cans * 30)
@@ -162,7 +199,9 @@ def scan():
                 'model_classes': list(model.names.values()),
                 'model_classes_dict': dict(model.names),
                 'total_detections': len(result.boxes) if result.boxes is not None else 0,
-                'confidence_threshold': 0.1,
+                'confidence_threshold': 0.6,
+                'min_area_threshold': 1000,
+                'aspect_ratio_validation': True,
                 'image_shape': image_array.shape,
                 'processing_time': 'N/A'
             },
