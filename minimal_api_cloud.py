@@ -51,24 +51,29 @@ try:
         logger.info("Model loaded successfully from model-yolov11/best.pt (Custom YOLOv11n)")
     else:
         logger.warning(f"Custom model not found at {custom_model_path}, using fallback")
-        raise FileNotFoundError("Custom model not available")
+        # ไม่ raise error แต่ให้ไป fallback ต่อ
+        model = None
         
-    logger.info(f"Model classes: {model.names}")
-    logger.info(f"Model classes count: {len(model.names)}")
+    if model:
+        logger.info(f"Model classes: {model.names}")
+        logger.info(f"Model classes count: {len(model.names)}")
     
 except Exception as e:
     logger.error(f"Failed to load custom model: {e}")
-    # Fallback to standard YOLOv11n (ultralytics >= 8.3.0)
+    model = None
+
+# Fallback to standard models if custom model failed
+if model is None:
     try:
         model = YOLO('yolo11n.pt')
-        logger.info("Fallback to standard YOLOv11n model")
+        logger.info("✅ Fallback to standard YOLOv11n model")
         logger.info(f"Model classes: {model.names}")
     except Exception as e2:
         logger.error(f"Failed to load standard YOLOv11n model: {e2}")
         # Final fallback to YOLOv8n
         try:
             model = YOLO('yolov8n.pt')
-            logger.info("Final fallback to standard YOLOv8n model")
+            logger.info("✅ Final fallback to standard YOLOv8n model")
             logger.info(f"Model classes: {model.names}")
         except Exception as e3:
             logger.error(f"Failed to load YOLOv8n model: {e3}")

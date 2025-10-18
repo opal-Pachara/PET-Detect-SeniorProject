@@ -38,6 +38,8 @@ pet_detect_members.db
 *.onnx
 model-yolov5s/*.pt
 !model-yolov5s/best.pt
+model-yolov11/*.pt
+!model-yolov11/best.pt
 
 # Images
 *.jpg
