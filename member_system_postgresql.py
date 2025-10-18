@@ -811,21 +811,22 @@ def admin_edit_score():
         
         cursor = connection.cursor()
         
-        # อัปเดตคะแนนใน scan_logs (เพิ่มคะแนนให้กับรายการล่าสุด)
+        # คำนวณคะแนนที่ต้องปรับ
+        cursor.execute("SELECT SUM(score) as current_total FROM scan_logs WHERE rfid_id = %s" if isinstance(connection, psycopg2.extensions.connection) else "SELECT SUM(score) as current_total FROM scan_logs WHERE rfid_id = ?", (rfid_id,))
+        current_total = cursor.fetchone()['current_total'] or 0
+        score_difference = new_score - current_total
+        
+        # เพิ่ม record ใหม่เพื่อปรับคะแนน
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("""
-                UPDATE scan_logs 
-                SET score = %s 
-                WHERE rfid_id = %s 
-                AND scan_time = (SELECT MAX(scan_time) FROM scan_logs WHERE rfid_id = %s)
-            """, (new_score, rfid_id, rfid_id))
+                INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (rfid_id, 0, 0, 0, 0, score_difference, 'admin_adjustment'))
         else:
             cursor.execute("""
-                UPDATE scan_logs 
-                SET score = ? 
-                WHERE rfid_id = ? 
-                AND scan_time = (SELECT MAX(scan_time) FROM scan_logs WHERE rfid_id = ?)
-            """, (new_score, rfid_id, rfid_id))
+                INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (rfid_id, 0, 0, 0, 0, score_difference, 'admin_adjustment'))
         
         connection.commit()
         cursor.close()
