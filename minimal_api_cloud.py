@@ -130,38 +130,20 @@ def scan():
                     height = y2 - y1
                     area = width * height
                     
-                    # คำนวณอัตราส่วนกว้าง/สูง
-                    aspect_ratio = width / height if height > 0 else 0
-                    
                     # เพิ่ม threshold เป็น 0.6 และตรวจสอบขนาดวัตถุ
                     if confidence > 0.6 and area > 1000:  # วัตถุต้องมีขนาดใหญ่พอ
-                        # ตรวจสอบอัตราส่วนตามประเภทวัตถุ
-                        is_valid_object = False
-                        
-                        # Support both custom model and standard YOLO models
+                        # ตรวจจับโดยไม่ตรวจสอบ aspect ratio
                         if class_name in ["Bottle", "bottle", "ขวด", "water bottle", "wine glass", "cup"]:
-                            # ขวด PET ควรมีอัตราส่วนประมาณ 0.3-0.8 (สูงมากกว่ากว้าง)
-                            if 0.3 <= aspect_ratio <= 0.8:
-                                bottles += 1
-                                is_valid_object = True
+                            bottles += 1
                                 
                         elif class_name in ["Can", "can", "กระป๋อง", "sports ball", "tennis ball"]:
-                            # กระป๋องควรมีอัตราส่วนประมาณ 0.4-0.9 (สูงมากกว่ากว้าง)
-                            if 0.4 <= aspect_ratio <= 0.9:
-                                cans += 1
-                                is_valid_object = True
+                            cans += 1
                                 
                         elif class_name in ["Cap", "cap", "ฝา", "frisbee", "donut"]:
-                            # ฝาควรมีอัตราส่วนประมาณ 0.8-1.2 (เกือบกลม)
-                            if 0.8 <= aspect_ratio <= 1.2:
-                                caps += 1
-                                is_valid_object = True
+                            caps += 1
                                 
                         elif class_name in ["Label", "label", "ฉลาก", "book", "cell phone", "remote"]:
-                            # ฉลากควรมีอัตราส่วนประมาณ 1.5-3.0 (กว้างมากกว่าสูง)
-                            if 1.5 <= aspect_ratio <= 3.0:
-                                labels += 1
-                                is_valid_object = True
+                            labels += 1
         
         # Calculate score (updated scoring system)
         score = (bottles * 50) + (cans * 100) + (caps * (-10)) + (labels * (-10))
@@ -186,7 +168,7 @@ def scan():
             'debug_info': {
                 'confidence_threshold': 0.6,
                 'min_area_threshold': 1000,
-                'aspect_ratio_validation': True
+                'aspect_ratio_validation': False
             },
             'message': f'พบ {bottles + caps + labels + cans} objects: ขวด {bottles}, ฝา {caps}, ฉลาก {labels}, กระป๋อง {cans}'
         })
