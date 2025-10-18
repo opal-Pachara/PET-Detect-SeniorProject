@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Load model
+# Load model with improved fallback handling
 try:
     # Fix PyTorch 2.6 weights_only issue
     import torch
@@ -44,23 +44,33 @@ try:
         'ultralytics.nn.modules.block.RepConv'
     ])
     
-    # Try loading custom model first (YOLOv11n)
-    model = YOLO('model-yolov5s/best.pt')
-    logger.info("Model loaded successfully from model-yolov5s/best.pt (YOLOv11n)")
+    # Check if custom model exists first
+    import os
+    custom_model_path = 'model-yolov5s/best.pt'
+    if os.path.exists(custom_model_path):
+        model = YOLO(custom_model_path)
+        logger.info("Model loaded successfully from model-yolov5s/best.pt (Custom YOLOv11n)")
+    else:
+        logger.warning(f"Custom model not found at {custom_model_path}, using fallback")
+        raise FileNotFoundError("Custom model not available")
+        
     logger.info(f"Model classes: {model.names}")
     logger.info(f"Model classes count: {len(model.names)}")
+    
 except Exception as e:
     logger.error(f"Failed to load custom model: {e}")
     # Fallback to standard YOLOv11n (ultralytics >= 8.3.0)
     try:
         model = YOLO('yolo11n.pt')
-        logger.info("Fallback to standard YOLOv11n model")
+        logger.info("✅ Fallback to standard YOLOv11n model")
+        logger.info(f"Model classes: {model.names}")
     except Exception as e2:
         logger.error(f"Failed to load standard YOLOv11n model: {e2}")
         # Final fallback to YOLOv8n
         try:
             model = YOLO('yolov8n.pt')
-            logger.info("Final fallback to standard YOLOv8n model")
+            logger.info("✅ Final fallback to standard YOLOv8n model")
+            logger.info(f"Model classes: {model.names}")
         except Exception as e3:
             logger.error(f"Failed to load YOLOv8n model: {e3}")
             model = None
@@ -132,7 +142,8 @@ def scan():
                         # ตรวจสอบอัตราส่วนตามประเภทวัตถุ
                         is_valid_object = False
                         
-                        if class_name in ["Bottle", "bottle", "ขวด"]:
+                        # Support both custom model and standard YOLO models
+                        if class_name in ["Bottle", "bottle", "ขวด", "bottle", "water bottle", "wine glass", "cup"]:
                             # ขวด PET ควรมีอัตราส่วนประมาณ 0.3-0.8 (สูงมากกว่ากว้าง)
                             if 0.3 <= aspect_ratio <= 0.8:
                                 bottles += 1
@@ -141,7 +152,7 @@ def scan():
                             else:
                                 logger.info(f"Invalid bottle aspect ratio: {aspect_ratio:.2f}")
                                 
-                        elif class_name in ["Can", "can", "กระป๋อง"]:
+                        elif class_name in ["Can", "can", "กระป๋อง", "sports ball", "tennis ball"]:
                             # กระป๋องควรมีอัตราส่วนประมาณ 0.4-0.9 (สูงมากกว่ากว้าง)
                             if 0.4 <= aspect_ratio <= 0.9:
                                 cans += 1
@@ -150,7 +161,7 @@ def scan():
                             else:
                                 logger.info(f"Invalid can aspect ratio: {aspect_ratio:.2f}")
                                 
-                        elif class_name in ["Cap", "cap", "ฝา"]:
+                        elif class_name in ["Cap", "cap", "ฝา", "frisbee", "donut"]:
                             # ฝาควรมีอัตราส่วนประมาณ 0.8-1.2 (เกือบกลม)
                             if 0.8 <= aspect_ratio <= 1.2:
                                 caps += 1
@@ -159,7 +170,7 @@ def scan():
                             else:
                                 logger.info(f"Invalid cap aspect ratio: {aspect_ratio:.2f}")
                                 
-                        elif class_name in ["Label", "label", "ฉลาก"]:
+                        elif class_name in ["Label", "label", "ฉลาก", "book", "cell phone", "remote"]:
                             # ฉลากควรมีอัตราส่วนประมาณ 1.5-3.0 (กว้างมากกว่าสูง)
                             if 1.5 <= aspect_ratio <= 3.0:
                                 labels += 1
@@ -175,8 +186,8 @@ def scan():
                 else:
                     logger.info(f"Low confidence or small object: {class_name} (confidence: {confidence:.3f}, area: {area:.1f})")
         
-        # Calculate score
-        score = (bottles * 50) + (caps * 10) + (labels * 5) + (cans * 30)
+        # Calculate score (updated scoring system)
+        score = (bottles * 50) + (cans * 100) + (caps * (-10)) + (labels * (-10))
         
         logger.info(f"AI inference completed")
         logger.info(f"Detection results - Bottles: {bottles}, Caps: {caps}, Labels: {labels}, Cans: {cans}, Score: {score}")
