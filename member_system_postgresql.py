@@ -220,7 +220,7 @@ def index():
                     rfid_id as username,
                     '' as email,
                     SUM(score) as total_score,
-                    COUNT(id) as scan_count,
+                    COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
                     MAX(scan_time) as last_scan
                 FROM scan_logs
                 GROUP BY rfid_id
@@ -235,7 +235,7 @@ def index():
                     rfid_id as username,
                     '' as email,
                     SUM(score) as total_score,
-                    COUNT(id) as scan_count,
+                    COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
                     MAX(scan_time) as last_scan
                 FROM scan_logs
                 GROUP BY rfid_id
@@ -533,7 +533,7 @@ def debug_data():
             SELECT 
                 rfid_id,
                 SUM(score) as total_score,
-                COUNT(*) as scan_count,
+                COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
                 MAX(scan_time) as last_scan,
                 SUM(bottle_count) as total_bottles,
                 SUM(can_count) as total_cans,
@@ -701,7 +701,7 @@ def manage_members():
             cursor.execute("""
                 SELECT s.rfid_id,
                        COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(s.id) as scan_count,
+                       COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
                        MAX(s.scan_time) as last_scan
                 FROM scan_logs s
                 GROUP BY s.rfid_id
@@ -711,7 +711,7 @@ def manage_members():
             cursor.execute("""
                 SELECT s.rfid_id,
                        COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(s.id) as scan_count,
+                       COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
                        MAX(s.scan_time) as last_scan
                 FROM scan_logs s
                 GROUP BY s.rfid_id
@@ -744,11 +744,12 @@ def scan_history():
         else:
             cursor = connection.cursor()
         
-        # ดึงประวัติการสแกนทั้งหมด
+        # ดึงประวัติการสแกนทั้งหมด (ไม่รวม admin adjustment)
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("""
                 SELECT s.*, s.rfid_id as full_name, s.rfid_id as username
                 FROM scan_logs s
+                WHERE s.image_path != 'ADMIN_ADJUSTMENT'
                 ORDER BY s.scan_time DESC
                 LIMIT 100
             """)
@@ -756,6 +757,7 @@ def scan_history():
             cursor.execute("""
                 SELECT s.*, s.rfid_id as full_name, s.rfid_id as username
                 FROM scan_logs s
+                WHERE s.image_path != 'ADMIN_ADJUSTMENT'
                 ORDER BY s.scan_time DESC
                 LIMIT 100
             """)
@@ -816,17 +818,17 @@ def admin_edit_score():
         current_total = cursor.fetchone()['current_total'] or 0
         score_difference = new_score - current_total
         
-        # เพิ่ม record ใหม่เพื่อปรับคะแนน
+        # เพิ่ม record ใหม่เพื่อปรับคะแนน (ไม่นับเป็นการสแกน)
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("""
                 INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (rfid_id, 0, 0, 0, 0, score_difference, 'admin_adjustment'))
+            """, (rfid_id, 0, 0, 0, 0, score_difference, 'ADMIN_ADJUSTMENT'))
         else:
             cursor.execute("""
                 INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (rfid_id, 0, 0, 0, 0, score_difference, 'admin_adjustment'))
+            """, (rfid_id, 0, 0, 0, 0, score_difference, 'ADMIN_ADJUSTMENT'))
         
         connection.commit()
         cursor.close()
