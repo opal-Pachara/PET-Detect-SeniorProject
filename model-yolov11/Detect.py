@@ -1,12 +1,12 @@
-<<<<<<< HEAD
-=======
+
+
 import streamlit as st
->>>>>>> fd413dfd8328b8377909f567fd5b74cd5d59ac37
+
 import cv2
 import torch
 import numpy as np
 import os
-<<<<<<< HEAD
+
 
 path = 'C:/Users/opal_/OneDrive/Desktop/webcam-test/best.pt'
 model = torch.hub.load('ultralytics/yolov5', 'custom', path, force_reload=True)
@@ -71,7 +71,7 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-=======
+
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
@@ -214,4 +214,3 @@ try:
             
 finally:
     cap.release()
->>>>>>> fd413dfd8328b8377909f567fd5b74cd5d59ac37

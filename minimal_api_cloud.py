@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """
-Minimal PET Detect API - Cloud Version
-สำหรับ Deploy ขึ้น Cloud (Render, Railway, etc.)
-Custom YOLOv11n Model: model-yolov11/best.pt
-Fallback 1: Standard YOLOv11n (yolo11n.pt) - ultralytics >= 8.3.0
-Fallback 2: Standard YOLOv8n (yolov8n.pt)
+Deploy ขึ้น Cloud (Render)
+model-yolov11/best.pt
+
 """
 
 import logging
@@ -12,10 +10,10 @@ import os
 from flask import Flask, request, jsonify
 from ultralytics import YOLO
 
-# Set YOLO config directory to avoid warning
+# Set YOLO config 
 os.environ['YOLO_CONFIG_DIR'] = '/tmp/Ultralytics'
 
-# Suppress YOLO warnings
+
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='ultralytics')
 import cv2
@@ -29,9 +27,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Load model with improved fallback handling
+
 try:
-    # Fix PyTorch 2.6 weights_only issue
+    # Fix PyTorch 2.6
     import torch
     torch.serialization.add_safe_globals([
         'ultralytics.nn.tasks.DetectionModel',
@@ -44,14 +42,13 @@ try:
         'ultralytics.nn.modules.block.RepConv'
     ])
     
-    # Check if custom model exists first
+    # Check custom model first
     custom_model_path = 'model-yolov11/best.pt'
     if os.path.exists(custom_model_path):
         model = YOLO(custom_model_path)
-        logger.info("Model loaded successfully from model-yolov11/best.pt (Custom YOLOv11n)")
+        logger.info("loaded success from model-yolov11/best.pt (YOLOv11n)")
     else:
         logger.warning(f"Custom model not found at {custom_model_path}, using fallback")
-        # ไม่ raise error แต่ให้ไป fallback ต่อ
         model = None
         
     if model:
@@ -62,18 +59,18 @@ except Exception as e:
     logger.error(f"Failed to load custom model: {e}")
     model = None
 
-# Fallback to standard models if custom model failed
+
 if model is None:
     try:
         model = YOLO('yolo11n.pt')
-        logger.info("✅ Fallback to standard YOLOv11n model")
+        logger.info("Fallback to standard YOLOv11n model")
         logger.info(f"Model classes: {model.names}")
     except Exception as e2:
         logger.error(f"Failed to load standard YOLOv11n model: {e2}")
-        # Final fallback to YOLOv8n
+        
         try:
             model = YOLO('yolov8n.pt')
-            logger.info("✅ Final fallback to standard YOLOv8n model")
+            logger.info("Final fallback to standard YOLOv8n model")
             logger.info(f"Model classes: {model.names}")
         except Exception as e3:
             logger.error(f"Failed to load YOLOv8n model: {e3}")
@@ -96,21 +93,21 @@ def scan():
         }), 400
     
     try:
-        # Get image file
+        # Get image
         image_file = request.files['image']
         
         # Read image
         image_bytes = image_file.read()
         image = Image.open(io.BytesIO(image_bytes))
         
-        # Convert to numpy array
+        
         image_array = np.array(image)
         logger.info(f"Image processed: {image_array.shape}")
         
-        # Run YOLO inference
+        # Run YOLO
         results = model(image_array)
         
-        # Process results
+        #results
         bottles = 0
         caps = 0
         labels = 0
@@ -124,15 +121,15 @@ def scan():
                     class_name = result.names[class_id]
                     confidence = float(box.conf[0])
                     
-                    # คำนวณขนาดของ bounding box
+                    # ขนาดของ bounding box
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                     width = x2 - x1
                     height = y2 - y1
                     area = width * height
                     
-                    # เพิ่ม threshold เป็น 0.6 และตรวจสอบขนาดวัตถุ
+                    # threshold เป็น 0.6 
                     if confidence > 0.6 and area > 1000:  # วัตถุต้องมีขนาดใหญ่พอ
-                        # ตรวจจับโดยไม่ตรวจสอบ aspect ratio
+                        
                         if class_name in ["Bottle", "bottle", "ขวด", "water bottle", "wine glass", "cup"]:
                             bottles += 1
                                 
@@ -145,7 +142,7 @@ def scan():
                         elif class_name in ["Label", "label", "ฉลาก", "book", "cell phone", "remote"]:
                             labels += 1
         
-        # Calculate score (updated scoring system)
+        # Calculate score
         score = (bottles * 50) + (cans * 100) + (caps * (-10)) + (labels * (-10))
         
         logger.info(f"AI inference completed")
@@ -160,7 +157,7 @@ def scan():
                 'labels': labels,
                 'cans': cans
             },
-            # เพิ่ม format ที่ Pi Client คาดหวัง
+            # เพิ่ม format ที่ Pi 
             'bottle_count': bottles,
             'cap_count': caps,
             'label_count': labels,
@@ -182,13 +179,13 @@ def scan():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
-    print(f"Starting Minimal PET Detect API...")
+    print(f"Start PET Detect API...")
     print(f"Port: {port}")
     print(f"Model path: model-yolov11/best.pt")
     print(f"Model status: {'Loaded' if model else 'Failed'}")
     print("Available endpoints:")
     print("   - POST /api/scan - Image analysis")
-    print("Press Ctrl+C to stop")
+    print("Ctrl+C to stop")
     
-    # Use gunicorn for production (don't run Flask directly on cloud)
+    # Use gunicorn 
     app.run(host='0.0.0.0', port=port, debug=False)

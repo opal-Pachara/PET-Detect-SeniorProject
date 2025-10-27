@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-PET Detect Client - ใช้ subprocess สำหรับ RFID
-เพื่อหลีกเลี่ยง GPIO conflict
+ใช้ subprocess สำหรับ RFID เพื่อหลีกเลี่ยง GPIO conflict
+
 """
 
 import time
@@ -22,7 +22,7 @@ try:
     LCD_AVAILABLE = True
 except ImportError:
     LCD_AVAILABLE = False
-    print("RPLCD not available. LCD disabled.")
+    print("LCD disable")
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -39,20 +39,20 @@ class PETDetectSubprocess:
         self.led_pin = 4   # GPIO 4 สำหรับ LED
         self.lcd = None    # LCD Display
         
-        # Signal handler
+        
         signal.signal(signal.SIGINT, self.signal_handler)
         
-        # Session for API
+        
         self.session = requests.Session()
         self.session.timeout = 5
         
-        # สร้าง RFID script helper
+        # สร้าง script RFID
         self.create_rfid_helper()
         
-        # Initialize LED
+        
         self.setup_led()
         
-        # Initialize Stepper Motor
+        # Stepper Motor
         try:
             print("เริ่ม Stepper Motor")
             self.stepper = StepperMotorController(
@@ -68,20 +68,20 @@ class PETDetectSubprocess:
     def setup_led(self):
         """ตั้งค่า GPIO สำหรับ LED"""
         try:
-            # ตั้งค่า GPIO mode ถ้ายังไม่ได้ตั้ง
+            
             try:
                 GPIO.setmode(GPIO.BCM)
             except ValueError:
-                pass  # Mode already set
+                pass  
             
-            GPIO.setup(self.led_pin, GPIO.OUT, initial=GPIO.LOW)   # เริ่มต้น LOW (ปิด LED)
-            GPIO.output(self.led_pin, GPIO.LOW)   # บังคับปิด LED (Relay Control)
+            GPIO.setup(self.led_pin, GPIO.OUT, initial=GPIO.LOW)   
+            GPIO.output(self.led_pin, GPIO.LOW)   
             print(f"LED setup complete - GPIO {self.led_pin} (OFF - Relay Control)")
             
-            # ทดสอบ LED 1 ครั้งเพื่อให้แน่ใจว่าทำงาน
-            GPIO.output(self.led_pin, GPIO.HIGH)  # เปิด LED
+            
+            GPIO.output(self.led_pin, GPIO.HIGH)  
             time.sleep(0.2)
-            GPIO.output(self.led_pin, GPIO.LOW)   # ปิด LED
+            GPIO.output(self.led_pin, GPIO.LOW)   
             print("LED test blink complete")
             
         except Exception as e:
@@ -135,7 +135,7 @@ class PETDetectSubprocess:
         """ปิด LED"""
         try:
             GPIO.output(self.led_pin, GPIO.LOW)
-            print("LED OFF - Manual Control")
+            print("LED OFF")
         except Exception as e:
             print(f"LED OFF error: {e}")
     
@@ -173,11 +173,11 @@ class PETDetectSubprocess:
                 print(f"LCD display error: {e}")
     
     def lcd_show_results(self, bottle_count, cap_count, label_count, can_count):
-        """แสดงผลการตรวจจับพร้อมระบบคะแนนใหม่"""
+        """แสดงการตรวจจับพร้อมคะแนน"""
         if self.lcd:
             try:
                 self.lcd.clear()
-                # แสดงจำนวนวัตถุที่ตรวจจับได้
+                # แสดงจำนวนที่จับได้
                 self.lcd.write_string(f"B:{bottle_count} C:{can_count}")
                 self.lcd.cursor_pos = (1, 0)
                 self.lcd.write_string(f"Cap:{cap_count} L:{label_count}")
@@ -196,7 +196,7 @@ class PETDetectSubprocess:
                 print(f"LCD display error: {e}")
 
     def signal_handler(self, signum, frame):
-        print("\nกำลังหยุดระบบ")
+        print("\nกำลังหยุด")
         self.running = False
         self.cleanup()
         sys.exit(0)
@@ -241,14 +241,14 @@ if __name__ == "__main__":
     
     def read_rfid_subprocess(self, timeout=30):
         """อ่าน RFID ผ่าน subprocess"""
-        print(f"รอสแกน RFID card (timeout: {timeout} วินาที)...")
-        print("วางบัตร RFID ใกล้ตัวอ่าน...")
+        print(f"รอสแกน RFID (timeout: {timeout} วินาที)...")
+        
         
         start_time = time.time()
         
         while time.time() - start_time < timeout and self.running:
             try:
-                # รัน RFID helper script
+                # รัน script RFID
                 result = subprocess.run(
                     ['python3', 'rfid_helper.py'],
                     capture_output=True,
@@ -317,7 +317,7 @@ if __name__ == "__main__":
                 print(f"บันทึกภาพ: {image_path}")
                 return image_path
             else:
-                print("ไม่สามารถถ่ายภาพได้")
+                print("ถ่ายภาพไม่ได้")
                 return None
         except Exception as e:
             print(f"Capture error: {e}")
@@ -362,9 +362,6 @@ if __name__ == "__main__":
             print("ไม่ได้รับผล")
             return
         
-       
-
-        # ใช้ result_data โดยตรง ไม่ต้อง get('result')
         bottle_count = result_data.get('bottle_count', 0)
         can_count = result_data.get('can_count', 0)
         cap_count = result_data.get('cap_count', 0)
@@ -384,7 +381,7 @@ if __name__ == "__main__":
         print(f"คะแนนรวม: {score}")
         print("=" * 40)
         
-        # แสดงผลตรวจจับบน LCD
+        # แสดงผลบน LCD
         self.lcd_show_results(bottle_count, cap_count, label_count, can_count)
         time.sleep(3)
         
@@ -399,14 +396,14 @@ if __name__ == "__main__":
     def save_score_to_web(self, card_id, result):
         """บันทึกคะแนนไปยังเว็บ database"""
         try:
-            # คำนวณคะแนนใหม่ตามระบบใหม่
+            
             bottle_count = result.get('bottle_count', 0)
             can_count = result.get('can_count', 0)
             cap_count = result.get('cap_count', 0)
             label_count = result.get('label_count', 0)
             score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
             
-            # ใช้ field โดยตรงจาก result_data
+            
             score_data = {
                 'card_id': str(card_id),
                 'bottle_count': bottle_count,
@@ -420,20 +417,20 @@ if __name__ == "__main__":
             print(f"Score Data: {score_data}")
             logger.info(f"Score data to send: {score_data}")
             
-            # ส่งไปยัง Member System API (บน Cloud) - พร้อม retry
+            # ส่งไปยัง Member System API
             max_retries = 3
             for attempt in range(max_retries):
                 try:
                     web_response = self.session.post(
-                        'https://pet-detect-seniorproject-1.onrender.com/api/add_score',  # Cloud Web Score System
+                        'https://pet-detect-seniorproject-1.onrender.com/api/add_score',  
                         json=score_data,
-                        timeout=30  # timeout สำหรับ cloud
+                        timeout=30
                     )
                     
                     if web_response.status_code == 200:
                         print("บันทึกคะแนนสำเร็จ")
                         logger.info(f"Score saved to web: Card {card_id}, Score {result.get('score', 0)}")
-                        return  # สำเร็จแล้ว
+                        return
                     else:
                         print(f"ไม่สามารถบันทึกคะแนนได้: {web_response.status_code} (attempt {attempt + 1})")
                         
@@ -442,7 +439,7 @@ if __name__ == "__main__":
                     logger.error(f"Web score save error (attempt {attempt + 1}): {e}")
                     
                 if attempt < max_retries - 1:
-                    time.sleep(2)  # รอ 2 วินาทีก่อนลองใหม่
+                    time.sleep(2)
                     
         except Exception as e:
             print(f"Web score save error: {e}")
@@ -457,7 +454,6 @@ if __name__ == "__main__":
         if not result_data or not result_data.get('success'):
             return
         
-        # ใช้ result_data โดยตรง ไม่ต้อง get('result')
         bottle_count = result_data.get('bottle_count', 0)
         can_count = result_data.get('can_count', 0)
         
@@ -470,19 +466,19 @@ if __name__ == "__main__":
             if bottle_count > 0 and can_count > 0:
                 print(f"พบทั้งขวด ({bottle_count}) และกระป๋อง ({can_count})")
                 print("หมุนขวา")
-                self.stepper.move_degrees(90, speed=150)  # 150 steps/sec
+                self.stepper.move_degrees(90, speed=150)
                 time.sleep(2)
                 
             elif bottle_count > 0:
                 print(f"พบขวด ({bottle_count} อัน)")
                 print("หมุนซ้าย")
-                self.stepper.move_degrees(-90, speed=150)  # 150 steps/sec
+                self.stepper.move_degrees(-90, speed=150)
                 time.sleep(2)
                 
             elif can_count > 0:
                 print(f"พบกระป๋อง ({can_count} อัน)")
                 print("หมุนขวา")
-                self.stepper.move_degrees(90, speed=150)  # 150 steps/sec
+                self.stepper.move_degrees(90, speed=150)
                 time.sleep(2)
             else:
                 print("ไม่พบขวดหรือกระป๋อง")
@@ -490,9 +486,8 @@ if __name__ == "__main__":
             
             # กลับตำแหน่งเดิม
             print("หมุนกลับตำแหน่งเริ่มต้น")
-            self.stepper.return_to_home(speed=200)  # ความเร็วกลับบ้านค่อย ๆ
+            self.stepper.return_to_home(speed=200)
             time.sleep(1)
-            
             
         except Exception as e:
             print(f"Stepper control error: {e}")
@@ -504,7 +499,6 @@ if __name__ == "__main__":
         print("\nเริ่มการสแกน")
         print("=" * 50)
         
-        # แสดงสถานะรอการแตะบัตร
         self.lcd_show_waiting()
         
         # 1. สแกน RFID ผ่าน subprocess
@@ -513,7 +507,7 @@ if __name__ == "__main__":
             print("ไม่พบบัตร RFID")
             return False
         
-        # แสดงเลข RFID ของบัตร
+        # แสดงเลข RFID
         self.lcd_show_rfid(card_id)
         
         # แสดงสถานะกำลังสแกน
@@ -540,17 +534,16 @@ if __name__ == "__main__":
         # 5. ควบคุม motor
         self.control_stepper(result)
         
-        # ปิด LED เมื่อจบกระบวนการ
+        # ปิด LED
         GPIO.output(self.led_pin, GPIO.LOW)
-        print("LED OFF - กระบวนการเสร็จสิ้น")
+        print("LED OFF")
         
-        print("การสแกนเสร็จสิ้น!")
+        print("การสแกนเสร็จสิ้น")
         return True
     
     def run_continuous_scan_system(self):
         """รันระบบสแกนต่อเนื่อง"""
         print("ระบบสแกน PET ")
-        print("กด Ctrl+C เพื่อหยุด")
         print("=" * 60)
         
         # ตั้งค่า LCD
@@ -563,7 +556,7 @@ if __name__ == "__main__":
                 scan_count += 1
                 print(f"\nรอบที่ {scan_count}:")
                 
-                # ปิด LED ก่อนเริ่มรอบใหม่
+                # ปิด LED
                 self.led_off()
                 
                 # แสดงสถานะรอการแตะบัตร
@@ -585,7 +578,7 @@ if __name__ == "__main__":
                 time.sleep(1)
     
     def cleanup(self):
-        """ทำความสะอาด"""
+        """ทำความสะอาดและปิดระบบ"""
         try:
             if self.camera:
                 self.close_camera()
@@ -626,11 +619,7 @@ def main():
     client = PETDetectSubprocess(api_url=API_URL)
     
     print("System พร้อม")
-    print("\nวิธีการทำงาน:")
-    print("- RFID: ใช้ subprocess")
-    print("- Camera: ภายใน main process")
-    print("- Stepper: ภายใน main process")
-    print("- API: ภายใน main process")
+    
     
     client.run_continuous_scan_system()
     client.cleanup()
