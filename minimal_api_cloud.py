@@ -29,18 +29,19 @@ app = Flask(__name__)
 
 
 try:
-    # Fix PyTorch 2.6
+    # Fix PyTorch 2.6+ (only available in newer versions)
     import torch
-    torch.serialization.add_safe_globals([
-        'ultralytics.nn.tasks.DetectionModel',
-        'ultralytics.nn.modules.block.Bottleneck',
-        'ultralytics.nn.modules.block.C3',
-        'ultralytics.nn.modules.block.SPPF',
-        'ultralytics.nn.modules.conv.Conv',
-        'ultralytics.nn.modules.head.Detect',
-        'ultralytics.nn.modules.block.C2f',
-        'ultralytics.nn.modules.block.RepConv'
-    ])
+    if hasattr(torch.serialization, 'add_safe_globals'):
+        torch.serialization.add_safe_globals([
+            'ultralytics.nn.tasks.DetectionModel',
+            'ultralytics.nn.modules.block.Bottleneck',
+            'ultralytics.nn.modules.block.C3',
+            'ultralytics.nn.modules.block.SPPF',
+            'ultralytics.nn.modules.conv.Conv',
+            'ultralytics.nn.modules.head.Detect',
+            'ultralytics.nn.modules.block.C2f',
+            'ultralytics.nn.modules.block.RepConv'
+        ])
     
     # Check custom model first
     custom_model_path = 'model-yolov11/best.pt'
