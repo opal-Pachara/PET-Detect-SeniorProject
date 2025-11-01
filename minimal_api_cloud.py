@@ -77,6 +77,19 @@ if model is None:
             model = None
 
 
+@app.route('/', methods=['GET'])
+def home():
+    """Root endpoint to check if API is running"""
+    return jsonify({
+        'status': 'running',
+        'service': 'PET Detect AI API',
+        'model_loaded': model is not None,
+        'endpoints': {
+            'scan': '/api/scan (POST)'
+        }
+    }), 200
+
+
 @app.route('/api/scan', methods=['POST'])
 def scan():
     """Image analysis endpoint"""
