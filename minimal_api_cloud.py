@@ -144,16 +144,14 @@ def scan():
                     # threshold เป็น 0.6 
                     if confidence > 0.6 and area > 1000:  # วัตถุต้องมีขนาดใหญ่พอ
                         
-                        if class_name in ["Bottle", "bottle", "ขวด", "water bottle", "wine glass", "cup"]:
+                        # Custom model classes: Bottle, Can, Cap, Label
+                        if class_name == "Bottle":
                             bottles += 1
-                                
-                        elif class_name in ["Can", "can", "กระป๋อง", "sports ball", "tennis ball"]:
+                        elif class_name == "Can":
                             cans += 1
-                                
-                        elif class_name in ["Cap", "cap", "ฝา", "frisbee", "donut"]:
+                        elif class_name == "Cap":
                             caps += 1
-                                
-                        elif class_name in ["Label", "label", "ฉลาก", "book", "cell phone", "remote"]:
+                        elif class_name == "Label":
                             labels += 1
         
         # Calculate score
