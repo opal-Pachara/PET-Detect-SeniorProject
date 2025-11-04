@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ใช้ subprocess สำหรับ RFID เพื่อหลีกเลี่ยง GPIO conflict
+ใช้ subprocess RFID 
 
 """
 
@@ -15,6 +15,9 @@ import os
 import json
 import RPi.GPIO as GPIO
 from stepper_motor_controller import StepperMotorController
+
+# ปิด GPIO warnings
+GPIO.setwarnings(False)
 
 # Import LCD Display
 try:
@@ -54,19 +57,17 @@ class PETDetectSubprocess:
         
         # Stepper Motor
         try:
-            print("เริ่ม Stepper Motor")
             self.stepper = StepperMotorController(
                 step_pin=18,
                 dir_pin=19,
                 enable_pin=None
             )
-            print("Stepper Motor พร้อม")
         except Exception as e:
             print(f"Stepper Error: {e}")
             self.stepper = None
     
     def setup_led(self):
-        """ตั้งค่า GPIO สำหรับ LED"""
+        """ตั้งค่า GPIO LED"""
         try:
             
             try:
@@ -76,13 +77,11 @@ class PETDetectSubprocess:
             
             GPIO.setup(self.led_pin, GPIO.OUT, initial=GPIO.LOW)   
             GPIO.output(self.led_pin, GPIO.LOW)   
-            print(f"LED setup complete - GPIO {self.led_pin} (OFF - Relay Control)")
             
-            
+            # Test LED blink
             GPIO.output(self.led_pin, GPIO.HIGH)  
             time.sleep(0.2)
-            GPIO.output(self.led_pin, GPIO.LOW)   
-            print("LED test blink complete")
+            GPIO.output(self.led_pin, GPIO.LOW)
             
         except Exception as e:
             print(f"LED setup error: {e}")
@@ -177,7 +176,7 @@ class PETDetectSubprocess:
         if self.lcd:
             try:
                 self.lcd.clear()
-                # แสดงจำนวนที่จับได้
+                # แสดงจำนวน
                 self.lcd.write_string(f"B:{bottle_count} C:{can_count}")
                 self.lcd.cursor_pos = (1, 0)
                 self.lcd.write_string(f"Cap:{cap_count} L:{label_count}")
@@ -296,7 +295,7 @@ if __name__ == "__main__":
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             
-            print("เปิดกล้องสำเร็จ")
+            print("เปิดกล้องเเล้ว")
             return True
         except Exception as e:
             print(f"Camera error: {e}")
@@ -333,7 +332,7 @@ if __name__ == "__main__":
     def send_image_to_api(self, image_path):
         """ส่งภาพไปยัง API"""
         try:
-            print("ส่งภาพไปยัง AI API...")
+            print("ส่งภาพไป AI API")
             
             with open(image_path, 'rb') as f:
                 files = {'image': f}
@@ -424,6 +423,7 @@ if __name__ == "__main__":
                     web_response = self.session.post(
                         'https://pet-detect-seniorproject-1.onrender.com/api/add_score',  
                         json=score_data,
+                        headers={'Content-Type': 'application/json'},
                         timeout=30
                     )
                     
@@ -606,6 +606,12 @@ if __name__ == "__main__":
             # ลบ helper script
             if os.path.exists('rfid_helper.py'):
                 os.remove('rfid_helper.py')
+            
+            # Cleanup GPIO
+            try:
+                GPIO.cleanup()
+            except:
+                pass
             
             print("Cleanup completed")
         except Exception as e:

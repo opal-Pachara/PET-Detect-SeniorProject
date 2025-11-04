@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PostgreSQL for Render
+PostgreSQL Render
 
 """
 
@@ -654,7 +654,13 @@ def stats():
             cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
             total_score = cursor.fetchone()['total_score']
             
-            cursor.execute("SELECT COUNT(DISTINCT rfid_id) as active_users FROM scan_logs")
+            # ผู้ใช้งานจริง = ผู้ที่สแกนภายใน 30 วันล่าสุด 
+            cursor.execute("""
+                SELECT COUNT(DISTINCT rfid_id) as active_users 
+                FROM scan_logs 
+                WHERE scan_time >= NOW() - INTERVAL '30 days'
+                    AND image_path != 'ADMIN_ADJUSTMENT'
+            """)
             active_users = cursor.fetchone()['active_users']
         else:
             cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_members FROM scan_logs")
@@ -666,7 +672,13 @@ def stats():
             cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
             total_score = cursor.fetchone()['total_score']
             
-            cursor.execute("SELECT COUNT(DISTINCT rfid_id) as active_users FROM scan_logs")
+            
+            cursor.execute("""
+                SELECT COUNT(DISTINCT rfid_id) as active_users 
+                FROM scan_logs 
+                WHERE scan_time >= datetime('now', '-30 days')
+                    AND image_path != 'ADMIN_ADJUSTMENT'
+            """)
             active_users = cursor.fetchone()['active_users']
         
         stats_data = {
@@ -696,7 +708,7 @@ def manage_members():
         else:
             cursor = connection.cursor()
         
-        # ดึงข้อมูลสมาชิกจาก scan_logs (ทุกคนที่มีการสแกน)
+        # ดึงข้อมูลสมาชิกจาก scan_logs 
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("""
                 SELECT s.rfid_id,
@@ -883,7 +895,16 @@ def add_score():
         # สร้างตารางถ้ายังไม่มี
         init_database()
         
-        data = request.json
+        # รับข้อมูล JSON (รองรับทั้ง request.json และ request.get_json)
+        if request.is_json:
+            data = request.get_json() or {}
+        else:
+            # ถ้าไม่ใช่ JSON ให้ลองอ่านเป็น JSON
+            try:
+                data = request.get_json(force=True) or {}
+            except:
+                data = {}
+        
         rfid_id = data.get('card_id') or data.get('rfid_id')
         bottle_count = data.get('bottle_count', 0)
         can_count = data.get('can_count', 0)

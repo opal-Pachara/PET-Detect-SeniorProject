@@ -1,12 +1,15 @@
 """
-Stepper Motor Controller with Micro Stepping
+
 สำหรับควบคุม Stepper Motor แบบ Micro Step ด้วย Raspberry Pi
-รองรับ A4988, DRV8825, TMC2208 Driver
+
 """
 
 import RPi.GPIO as GPIO
 import time
 import logging
+
+# ปิด GPIO warnings
+GPIO.setwarnings(False)
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +39,6 @@ class StepperMotorController:
         self.setup_gpio()
         if self.enable_pin is not None:
             self.enable_motor()
-        
-        logger.info(f"Professional Stepper Motor Controller initialized")
-        logger.info(f"Steps/Rev: {self.steps_per_revolution} (set by DIP switches)")
-        logger.info("Use external power supply (12V/24V) for VCC on driver")
-        logger.info("Pi provides only signal (PUL+, DIR+) and signal ground")
     
     def setup_gpio(self):
         """ตั้งค่า GPIO pins"""
@@ -62,8 +60,6 @@ class StepperMotorController:
             except RuntimeError as e:
                 logger.warning(f"GPIO pin {pin} setup warning: {e}")
         
-        enable_status = "with Enable pin" if self.enable_pin else "without Enable pin"
-        logger.info(f"GPIO pins configured for professional driver ({enable_status})")
     
     
     
