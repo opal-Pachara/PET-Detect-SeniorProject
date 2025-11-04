@@ -8,47 +8,34 @@ import RPi.GPIO as GPIO
 import time
 import logging
 
-# ปิด GPIO warnings
+
 GPIO.setwarnings(False)
 
 logger = logging.getLogger(__name__)
 
 class StepperMotorController:
-    """ควบคุม Stepper Motor แบบ Micro Step"""
+    """คุม Stepper Motor"""
     
     def __init__(self, step_pin=20, dir_pin=21, enable_pin=None):
-        """
-        Initialize Stepper Motor Controller for Professional Driver
         
-        Args:
-            step_pin: GPIO pin สำหรับ PUL+ (STEP signal)
-            dir_pin: GPIO pin สำหรับ DIR+ (direction)
-            enable_pin: GPIO pin สำหรับ ENA+ (optional, None = ไม่ใช้)
-        """
         self.step_pin = step_pin
         self.dir_pin = dir_pin
         self.enable_pin = enable_pin
         
-        # Professional Driver Settings
-        # Micro step จะตั้งค่าผ่าน DIP switches บน driver แล้ว
         # SW2=OFF, SW3=OFF, SW6=OFF
-        self.steps_per_revolution = 1600  # ปรับตาม DIP switch ที่ตั้งจริง (SW2,3,6=OFF)
-        self.current_position = 0  # ตำแหน่งปัจจุบัน
+        self.steps_per_revolution = 1600
+        self.current_position = 0  # ตำแหน่งเริ่ม
         
         # Setup GPIO
         self.setup_gpio()
-        if self.enable_pin is not None:
-            self.enable_motor()
     
     def setup_gpio(self):
         """ตั้งค่า GPIO pins"""
         try:
             GPIO.setmode(GPIO.BCM)
         except ValueError:
-            # GPIO mode already set, just continue
-            logger.info("GPIO mode already set, continuing...")
+            logger.info("GPIO mode already set")
         
-        # Output pins สำหรับ Professional Driver
         pins = [self.step_pin, self.dir_pin]
         if self.enable_pin is not None:
             pins.append(self.enable_pin)
@@ -64,13 +51,13 @@ class StepperMotorController:
     
     
     def set_direction(self, clockwise=True):
-        """ตั้งค่าทิศทางการหมุน"""
+        """ตั้งค่าการหมุน"""
         GPIO.output(self.dir_pin, GPIO.HIGH if clockwise else GPIO.LOW)
         direction = "Clockwise" if clockwise else "Counter-clockwise"
         logger.debug(f"Direction set to: {direction}")
     
     def step_once(self, delay=0.001):
-        """ขับมอเตอร์ 1 step"""
+        """มอเตอร์ 1 step"""
         GPIO.output(self.step_pin, GPIO.HIGH)
         time.sleep(delay / 2)
         GPIO.output(self.step_pin, GPIO.LOW)
@@ -78,18 +65,14 @@ class StepperMotorController:
     
     def move_steps(self, steps, speed=1000, clockwise=True):
         """
-        เคลื่อนที่จำนวน steps ที่กำหนด
+        ขยับตามจำนวน steps ที่กำหนด
         
-        Args:
-            steps: จำนวน steps ที่ต้องการเคลื่อนที่
-            speed: ความเร็ว (steps per second)
-            clockwise: ทิศทางการหมุน
         """
         if steps <= 0:
             return
         
         self.set_direction(clockwise)
-        delay = 1.0 / speed  # delay ระหว่าง steps
+        delay = 1.0 / speed  # delay
         
         direction_multiplier = 1 if clockwise else -1
         
@@ -100,7 +83,6 @@ class StepperMotorController:
                 self.step_once(delay)
                 self.current_position += direction_multiplier
                 
-                # แสดงความคืบหน้าทุก 100 steps
                 if (i + 1) % 100 == 0:
                     print(f"Progress: {i + 1}/{steps} steps")
         
@@ -110,19 +92,13 @@ class StepperMotorController:
         logger.info(f"Movement completed. Current position: {self.current_position}")
     
     def move_degrees(self, degrees, speed=1000):
-        """
-        หมุนตามองศาที่กำหนด
-        
-        Args:
-            degrees: องศาที่ต้องการหมุน (+/- สำหรับทิศทาง)
-            speed: ความเร็ว (steps per second)
-        """
+        """หมุนตามองศาที่กำหนด"""
+
         steps = abs(int((degrees / 360.0) * self.steps_per_revolution))
         clockwise = degrees > 0
         
         logger.info(f"Moving {degrees} degrees = {steps} steps")
         self.move_steps(steps, speed, clockwise)
-    
     
     def return_to_home(self, speed=1200):
         """กลับไปตำแหน่งเริ่มต้น"""
@@ -131,7 +107,7 @@ class StepperMotorController:
             return
         
         steps_to_home = abs(self.current_position)
-        clockwise = self.current_position < 0  # ถ้าตำแหน่งติดลบ ให้หมุนขวา
+        clockwise = self.current_position < 0  # ตำแหน่งติดลบ ให้หมุนขวา
         
         print(f"กลับตำแหน่งเริ่มต้น: {steps_to_home} steps")
         logger.info(f"Returning to home position from {self.current_position}")
@@ -139,13 +115,12 @@ class StepperMotorController:
         self.move_steps(steps_to_home, speed, clockwise)
         self.current_position = 0  # รีเซ็ตตำแหน่ง
     
-    
     def cleanup(self):
         """ปิด motor"""
         try:
             if self.enable_pin is not None:
-                GPIO.output(self.enable_pin, GPIO.HIGH)  # HIGH = disable
+                GPIO.output(self.enable_pin, GPIO.HIGH)
                 logger.info("Motor disabled")
-            logger.info("Stepper motor controller cleaned up")
+            logger.info("Stepper motor cleaned up")
         except Exception as e:
             logger.error(f"Cleanup error: {e}")

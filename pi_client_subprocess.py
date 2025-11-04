@@ -16,7 +16,7 @@ import json
 import RPi.GPIO as GPIO
 from stepper_motor_controller import StepperMotorController
 
-# ปิด GPIO warnings
+
 GPIO.setwarnings(False)
 
 # Import LCD Display
@@ -39,19 +39,16 @@ class PETDetectSubprocess:
         self.running = True
         self.camera = None
         self.stepper = None
-        self.led_pin = 4   # GPIO 4 สำหรับ LED
-        self.lcd = None    # LCD Display
-        
+        self.led_pin = 4   # GPIO 4 สำหรับ ไฟ
+        self.lcd = None    
         
         signal.signal(signal.SIGINT, self.signal_handler)
-        
         
         self.session = requests.Session()
         self.session.timeout = 5
         
-        # สร้าง script RFID
+        # สร้าง สคริป RFID
         self.create_rfid_helper()
-        
         
         self.setup_led()
         
@@ -67,7 +64,7 @@ class PETDetectSubprocess:
             self.stepper = None
     
     def setup_led(self):
-        """ตั้งค่า GPIO LED"""
+        """ตั้งค่า GPIO ไฟ"""
         try:
             
             try:
@@ -78,7 +75,7 @@ class PETDetectSubprocess:
             GPIO.setup(self.led_pin, GPIO.OUT, initial=GPIO.LOW)   
             GPIO.output(self.led_pin, GPIO.LOW)   
             
-            # Test LED blink
+            # Test ไฟ
             GPIO.output(self.led_pin, GPIO.HIGH)  
             time.sleep(0.2)
             GPIO.output(self.led_pin, GPIO.LOW)
@@ -110,28 +107,28 @@ class PETDetectSubprocess:
     def led_on(self, duration=2):
         """เปิด LED เป็นเวลา duration วินาที (Direct Connection)"""
         try:
-            GPIO.output(self.led_pin, GPIO.HIGH)  # เปิด LED
+            GPIO.output(self.led_pin, GPIO.HIGH)  # เปิดไฟ
             print("LED ON")
             time.sleep(duration)
-            GPIO.output(self.led_pin, GPIO.LOW)   # ปิด LED
+            GPIO.output(self.led_pin, GPIO.LOW)   # ปิดไฟ
             print("LED OFF")
         except Exception as e:
             print(f"LED control error: {e}")
     
     def led_blink(self, times=3, interval=0.5):
-        """กระพริบ LED (Direct Connection)"""
+        """กระพริบ ไฟ"""
         try:
             for i in range(times):
-                GPIO.output(self.led_pin, GPIO.HIGH)  # เปิด LED
+                GPIO.output(self.led_pin, GPIO.HIGH)  # เปิดไฟ
                 time.sleep(interval)
-                GPIO.output(self.led_pin, GPIO.LOW)   # ปิด LED
+                GPIO.output(self.led_pin, GPIO.LOW)   # ปิดไฟ
                 time.sleep(interval)
             print(f"LED blinked {times} times")
         except Exception as e:
             print(f"LED blink error: {e}")
     
     def led_off(self):
-        """ปิด LED"""
+        """ปิดไฟ"""
         try:
             GPIO.output(self.led_pin, GPIO.LOW)
             print("LED OFF")
@@ -139,7 +136,7 @@ class PETDetectSubprocess:
             print(f"LED OFF error: {e}")
     
     def lcd_show_waiting(self):
-        """แสดงสถานะรอการแตะบัตร"""
+        """แสดงรอการแตะบัตร"""
         if self.lcd:
             try:
                 self.lcd.clear()
@@ -172,7 +169,7 @@ class PETDetectSubprocess:
                 print(f"LCD display error: {e}")
     
     def lcd_show_results(self, bottle_count, cap_count, label_count, can_count):
-        """แสดงการตรวจจับพร้อมคะแนน"""
+        """แสดงที่ตรวจจับได้"""
         if self.lcd:
             try:
                 self.lcd.clear()
@@ -201,7 +198,7 @@ class PETDetectSubprocess:
         sys.exit(0)
     
     def create_rfid_helper(self):
-        """สร้าง RFID helper script"""
+        """สร้าง สคริป RFID"""
         rfid_script = """#!/usr/bin/env python3
 import time
 import json
@@ -242,12 +239,11 @@ if __name__ == "__main__":
         """อ่าน RFID ผ่าน subprocess"""
         print(f"รอสแกน RFID (timeout: {timeout} วินาที)...")
         
-        
         start_time = time.time()
         
         while time.time() - start_time < timeout and self.running:
             try:
-                # รัน script RFID
+                # รัน สคริป RFID
                 result = subprocess.run(
                     ['python3', 'rfid_helper.py'],
                     capture_output=True,
@@ -265,7 +261,7 @@ if __name__ == "__main__":
                             
                             # เปิด LED เมื่อแตะบัตร RFID (ติดค้างจนจบกระบวนการ)
                             GPIO.output(self.led_pin, GPIO.HIGH)
-                            print("LED ON - จะติดจนจบกระบวนการ")
+                            print("LED ON")
                             
                             return card_id, text
                     except json.JSONDecodeError:
@@ -356,7 +352,7 @@ if __name__ == "__main__":
             return None
     
     def process_scan_result(self, result_data, card_id=None):
-        """แสดงผลการวิเคราะห์และบันทึกคะแนน"""
+        """แสดงผลและบันทึกคะแนน"""
         if not result_data or not result_data.get('success'):
             print("ไม่ได้รับผล")
             return
@@ -393,7 +389,7 @@ if __name__ == "__main__":
             self.save_score_to_web(card_id, result_data)
     
     def save_score_to_web(self, card_id, result):
-        """บันทึกคะแนนไปยังเว็บ database"""
+        """ส่งคะเเนนไปบันทึกใน database"""
         try:
             
             bottle_count = result.get('bottle_count', 0)
@@ -485,7 +481,7 @@ if __name__ == "__main__":
                 return
             
             # กลับตำแหน่งเดิม
-            print("หมุนกลับตำแหน่งเริ่มต้น")
+            print("กลับตำแหน่งเดิม")
             self.stepper.return_to_home(speed=200)
             time.sleep(1)
             
@@ -501,7 +497,7 @@ if __name__ == "__main__":
         
         self.lcd_show_waiting()
         
-        # 1. สแกน RFID ผ่าน subprocess
+        #สแกน RFID ผ่าน subprocess
         card_id, text = self.read_rfid_subprocess(timeout=30)
         if not card_id:
             print("ไม่พบบัตร RFID")
@@ -513,7 +509,7 @@ if __name__ == "__main__":
         # แสดงสถานะกำลังสแกน
         self.lcd_show_scanning()
         
-        # 2. เปิดกล้องและถ่ายภาพ
+        #เปิดกล้องและถ่ายภาพ
         if not self.open_camera():
             return False
         
@@ -523,18 +519,16 @@ if __name__ == "__main__":
         if not image_path:
             return False
         
-        # 3. ส่งไปยัง API
+        #ส่งไปยัง API
         result = self.send_image_to_api(image_path)
         if not result:
             return False
         
-        # 4. แสดงผลและบันทึกคะแนน
+        #แสดงผลและบันทึกคะแนน
         self.process_scan_result(result, card_id)
         
-        # 5. ควบคุม motor
         self.control_stepper(result)
         
-        # ปิด LED
         GPIO.output(self.led_pin, GPIO.LOW)
         print("LED OFF")
         
@@ -556,7 +550,7 @@ if __name__ == "__main__":
                 scan_count += 1
                 print(f"\nรอบที่ {scan_count}:")
                 
-                # ปิด LED
+                # ปิดไฟ
                 self.led_off()
                 
                 # แสดงสถานะรอการแตะบัตร
@@ -578,7 +572,7 @@ if __name__ == "__main__":
                 time.sleep(1)
     
     def cleanup(self):
-        """ทำความสะอาดและปิดระบบ"""
+        """cleanup และ ปิดระบบ"""
         try:
             if self.camera:
                 self.close_camera()
@@ -596,14 +590,14 @@ if __name__ == "__main__":
                 except:
                     pass
             
-            # ปิด LED ก่อนจบ
+            # ปิดไฟก่อนจบ
             try:
                 GPIO.output(self.led_pin, GPIO.LOW)   # ปิด LED
                 print("LED turned OFF")
             except:
                 pass
             
-            # ลบ helper script
+            # ลบ สคริป RFID
             if os.path.exists('rfid_helper.py'):
                 os.remove('rfid_helper.py')
             
@@ -625,7 +619,6 @@ def main():
     client = PETDetectSubprocess(api_url=API_URL)
     
     print("System พร้อม")
-    
     
     client.run_continuous_scan_system()
     client.cleanup()

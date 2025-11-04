@@ -16,7 +16,7 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'pet_detect_secret_key_2025')
 
-# Database config for cloud
+# Database config
 DB_CONFIG = {
     'host': os.environ.get('DB_HOST', 'localhost'),
     'port': os.environ.get('DB_PORT', '5432'),
@@ -29,9 +29,9 @@ DB_CONFIG = {
 print(f"Database Config: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']} (user: {DB_CONFIG['user']})")
 
 def get_db_connection():
-    """สร้างการเชื่อมต่อฐานข้อมูล PostgreSQL หรือ SQLite fallback"""
+    """สร้างการเชื่อมต่อฐานข้อมูล PostgreSQL เเละ SQLite fallback"""
     try:
-        # ลองเชื่อมต่อ PostgreSQL ก่อน
+        # ลองเชื่อม PostgreSQL ก่อน
         connection = psycopg2.connect(**DB_CONFIG)
         print("Connected to PostgreSQL")
         return connection
@@ -49,7 +49,7 @@ def get_db_connection():
             return None
 
 def init_database():
-    """สร้างตารางฐานข้อมูล"""
+    """สร้างตาราง"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -119,11 +119,11 @@ def init_database():
         return False
 
 def hash_password(password):
-    """เข้ารหัสรหัสผ่าน"""
+    """การเข้ารหัส"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_password(password, hashed):
-    """ตรวจสอบรหัสผ่าน"""
+    """ตรวจสอบรหัส"""
     return hash_password(password) == hashed
 
 def login_required(f):
@@ -137,7 +137,7 @@ def login_required(f):
     return decorated_function
 
 def create_admin_user():
-    """สร้างผู้ดูแลระบบเริ่มต้น"""
+    """สร้าง admin"""
     try:
         print("DEBUG: Creating admin user...")
         connection = get_db_connection()
@@ -148,7 +148,7 @@ def create_admin_user():
         print("DEBUG: Database connection successful in create_admin_user")
         cursor = connection.cursor()
         
-        # ตรวจสอบว่ามี admin หรือไม่
+        # ตรวจสอบว่ามี admin ไหม
         if isinstance(connection, psycopg2.extensions.connection):
             print("DEBUG: Checking admin user with PostgreSQL")
             cursor.execute("SELECT id FROM admin_users WHERE username = 'admin'")
@@ -160,7 +160,7 @@ def create_admin_user():
         print(f"DEBUG: Admin exists: {admin_exists}")
         
         if not admin_exists:
-            # สร้าง admin user
+            # สร้าง admin
             admin_password = hash_password('admin123')
             print(f"DEBUG: Admin password hash: {admin_password}")
             
@@ -196,7 +196,7 @@ def create_admin_user():
 def index():
     """หน้าหลัก ตารางคะแนน"""
     try:
-        # สร้างตารางถ้ายังไม่มี
+        # สร้างตารางถ้าไม่มี
         init_database()
         
         connection = get_db_connection()
@@ -402,7 +402,7 @@ def debug_admin():
         else:
             cursor = connection.cursor()
         
-        # ตรวจสอบ admin user
+        # ตรวจสอบ admin
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("SELECT id, username, password_hash FROM admin_users WHERE username = 'admin'")
         else:
@@ -418,12 +418,12 @@ def debug_admin():
         
         member_count = cursor.fetchone()
         
-        # ตรวจสอบ database type ก่อนปิด connection
+        # ตรวจสอบ database type ก่อนปิดการเชื่อมต่อ
         is_postgresql = isinstance(connection, psycopg2.extensions.connection)
         
         connection.close()
         
-        # แปลงข้อมูลให้เหมาะสมกับ database type
+        # แปลงข้อมูลให้เหมาะกับ database type
         if admin_user:
             if is_postgresql:
                 admin_user_dict = dict(admin_user)
@@ -460,7 +460,7 @@ def create_admin_api():
         
         cursor = connection.cursor()
         
-        # ตรวจสอบว่ามี admin หรือไม่
+        # ตรวจสอบว่ามี admin ไหม
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("SELECT id FROM admin_users WHERE username = 'admin'")
         else:
@@ -470,7 +470,7 @@ def create_admin_api():
         print(f"DEBUG: Admin exists: {admin_exists}")
         
         if not admin_exists:
-            # สร้าง admin user
+            # สร้าง admin
             admin_password = hash_password('admin123')
             print(f"DEBUG: Admin password hash: {admin_password}")
             
@@ -487,13 +487,14 @@ def create_admin_api():
             
             connection.commit()
             print("DEBUG: Admin user created successfully")
+            cursor.close()
+            connection.close()
             return jsonify({'success': True, 'message': 'Admin user created successfully'})
         else:
             print("DEBUG: Admin user already exists")
+            cursor.close()
+            connection.close()
             return jsonify({'success': True, 'message': 'Admin user already exists'})
-        
-        cursor.close()
-        connection.close()
         
     except Exception as e:
         print(f"DEBUG: Error creating admin user: {e}")
@@ -501,7 +502,7 @@ def create_admin_api():
 
 @app.route('/api/debug_data', methods=['GET'])
 def debug_data():
-    """API endpoint สำหรับดูข้อมูลในฐานข้อมูลโดยตรง"""
+    """API endpoint สำหรับดูข้อมูลในฐานข้อมูล"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -551,7 +552,7 @@ def debug_data():
             members_data = [dict(row) for row in members_data]
             tables = [dict(row) for row in tables]
         
-        # ประวัติการสแกนล่าสุด 10 รายการ
+        # ประวัติการสแกนล่าสุด 10 ครั้ง
         cursor.execute("""
             SELECT 
                 id,
@@ -654,7 +655,7 @@ def stats():
             cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
             total_score = cursor.fetchone()['total_score']
             
-            # ผู้ใช้งานจริง = ผู้ที่สแกนภายใน 30 วันล่าสุด 
+            # ผู้ใช้งานจริง 30 วันล่าสุด 
             cursor.execute("""
                 SELECT COUNT(DISTINCT rfid_id) as active_users 
                 FROM scan_logs 
@@ -756,7 +757,7 @@ def scan_history():
         else:
             cursor = connection.cursor()
         
-        # ดึงประวัติการสแกนทั้งหมด (ไม่รวม admin)
+        # ดึงประวัติการสแกนทั้งหมด
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("""
                 SELECT s.*, s.rfid_id as full_name, s.rfid_id as username
@@ -784,7 +785,7 @@ def scan_history():
         for scan in scan_history:
             if scan.get('scan_time'):
                 if isinstance(scan['scan_time'], str):
-                    # ถ้าเป็น string แล้ว ให้แปลงเป็น datetime object
+                    # ถ้าเป็น string แล้ว ให้แปลงเป็น datetime
                     try:
                         from datetime import datetime
                         if 'T' in scan['scan_time']:
@@ -895,11 +896,11 @@ def add_score():
         # สร้างตารางถ้ายังไม่มี
         init_database()
         
-        # รับข้อมูล JSON (รองรับทั้ง request.json และ request.get_json)
+        # รับข้อมูล JSON
         if request.is_json:
             data = request.get_json() or {}
         else:
-            # ถ้าไม่ใช่ JSON ให้ลองอ่านเป็น JSON
+            
             try:
                 data = request.get_json(force=True) or {}
             except:
@@ -913,7 +914,7 @@ def add_score():
         image_path = data.get('image_path', '')
         
         
-        # ขวด PET: +50 คะแนน, กระป๋อง: +100 คะแนน, ฝา: -10 คะแนน, สลาก: -10 คะแนน
+        
         score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
         
         # Debug logging
@@ -980,9 +981,9 @@ if __name__ == '__main__':
     
     if init_database():
         print("Database ready!")
-        # Create admin user
+        
         create_admin_user()
-        # Get port from environment
+        # Get port
         port = int(os.environ.get('PORT', 9000))
         app.run(host='0.0.0.0', port=port, debug=False)
     else:

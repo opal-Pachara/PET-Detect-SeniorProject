@@ -13,7 +13,6 @@ from ultralytics import YOLO
 # Set YOLO config 
 os.environ['YOLO_CONFIG_DIR'] = '/tmp/Ultralytics'
 
-
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='ultralytics')
 import cv2
@@ -27,9 +26,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-
 try:
-    # Fix PyTorch 2.6+ (only available in newer versions)
+    #PyTorch 2.6+
     import torch
     if hasattr(torch.serialization, 'add_safe_globals'):
         torch.serialization.add_safe_globals([
@@ -43,7 +41,7 @@ try:
             'ultralytics.nn.modules.block.RepConv'
         ])
     
-    # Check custom model first
+    # Check โมเดล ที่เทรนเองก่อน
     custom_model_path = 'model-yolov11/best.pt'
     if os.path.exists(custom_model_path):
         model = YOLO(custom_model_path)
@@ -59,7 +57,6 @@ try:
 except Exception as e:
     logger.error(f"Failed to load custom model: {e}")
     model = None
-
 
 if model is None:
     try:
@@ -77,7 +74,6 @@ if model is None:
             logger.error(f"Failed to load YOLOv8n model: {e3}")
             model = None
 
-
 @app.route('/', methods=['GET'])
 def home():
     """Root endpoint to check if API is running"""
@@ -89,7 +85,6 @@ def home():
             'scan': '/api/scan (POST)'
         }
     }), 200
-
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
@@ -114,21 +109,18 @@ def scan():
         image_bytes = image_file.read()
         image = Image.open(io.BytesIO(image_bytes))
         
-        
         image_array = np.array(image)
         logger.info(f"Image processed: {image_array.shape}")
         
         # Run YOLO
         results = model(image_array)
         
-        #results
         bottles = 0
         caps = 0
         labels = 0
         cans = 0
         
         for result in results:
-            
             if result.boxes is not None:
                 for i, box in enumerate(result.boxes):
                     class_id = int(box.cls[0])
@@ -141,10 +133,9 @@ def scan():
                     height = y2 - y1
                     area = width * height
                     
-                    # threshold เป็น 0.6 
+                    # ปรับ threshold เป็น 0.6 
                     if confidence > 0.6 and area > 1000:  # วัตถุต้องมีขนาดใหญ่พอ
-                        
-                        # Custom model classes: Bottle, Can, Cap, Label
+                        # model class
                         if class_name == "Bottle":
                             bottles += 1
                         elif class_name == "Can":
@@ -154,7 +145,7 @@ def scan():
                         elif class_name == "Label":
                             labels += 1
         
-        # Calculate score
+        # คำนวณคะเเนน
         score = (bottles * 50) + (cans * 100) + (caps * (-10)) + (labels * (-10))
         
         logger.info(f"AI inference completed")
@@ -169,7 +160,6 @@ def scan():
                 'labels': labels,
                 'cans': cans
             },
-            # เพิ่ม format ที่ Pi 
             'bottle_count': bottles,
             'cap_count': caps,
             'label_count': labels,
