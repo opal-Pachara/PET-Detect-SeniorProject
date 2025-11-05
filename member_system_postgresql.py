@@ -379,7 +379,7 @@ def admin_login():
 @app.route('/admin', methods=['GET'])
 @login_required
 def admin():
-    """หน้าผู้ดูแลระบบ - ต้องล็อกอิน"""
+    """หน้าผู้ดูแลระบบ"""
     return render_template('admin.html')
 
 @app.route('/admin/logout', methods=['GET'])
@@ -547,10 +547,14 @@ def debug_data():
         
         members_data = cursor.fetchall()
         
-        # แปลงข้อมูลสำหรับ SQLite
+        # แปลงข้อมูลสำหรับ SQLite และ PostgreSQL
         if isinstance(connection, sqlite3.Connection):
             members_data = [dict(row) for row in members_data]
             tables = [dict(row) for row in tables]
+        else:
+            # PostgreSQL กับ RealDictCursor return dict อยู่แล้ว แต่ต้องแปลง list
+            members_data = [dict(row) for row in members_data]
+            tables = [dict(table) for table in tables]
         
         # ประวัติการสแกนล่าสุด 10 ครั้ง
         cursor.execute("""
@@ -573,6 +577,9 @@ def debug_data():
         # แปลงข้อมูลสำหรับ SQLite
         if isinstance(connection, sqlite3.Connection):
             recent_scans = [dict(row) for row in recent_scans]
+        else:
+            # PostgreSQL กับ RealDictCursor return dict อยู่แล้ว
+            recent_scans = [dict(scan) for scan in recent_scans]
         
         # สถิติรวม
         cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_users FROM scan_logs")
@@ -601,6 +608,9 @@ def debug_data():
         # แปลงข้อมูลสำหรับ SQLite
         if isinstance(connection, sqlite3.Connection):
             admin_users = [dict(row) for row in admin_users]
+        else:
+            # PostgreSQL กับ RealDictCursor return dict อยู่แล้ว
+            admin_users = [dict(user) for user in admin_users]
         
         # ตรวจสอบ database type
         database_type = "PostgreSQL" if isinstance(connection, psycopg2.extensions.connection) else "SQLite"
@@ -647,13 +657,16 @@ def stats():
         # สถิติสมาชิก (scan_logs)
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_members FROM scan_logs")
-            total_members = cursor.fetchone()['total_members']
+            result = cursor.fetchone()
+            total_members = result['total_members'] if result else 0
             
             cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
-            total_scans = cursor.fetchone()['total_scans']
+            result = cursor.fetchone()
+            total_scans = result['total_scans'] if result else 0
             
             cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
-            total_score = cursor.fetchone()['total_score']
+            result = cursor.fetchone()
+            total_score = result['total_score'] if result else 0
             
             # ผู้ใช้งานจริง 30 วันล่าสุด 
             cursor.execute("""
@@ -662,16 +675,20 @@ def stats():
                 WHERE scan_time >= NOW() - INTERVAL '30 days'
                     AND image_path != 'ADMIN_ADJUSTMENT'
             """)
-            active_users = cursor.fetchone()['active_users']
+            result = cursor.fetchone()
+            active_users = result['active_users'] if result else 0
         else:
             cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_members FROM scan_logs")
-            total_members = cursor.fetchone()['total_members']
+            result = cursor.fetchone()
+            total_members = result['total_members'] if result else 0
             
             cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
-            total_scans = cursor.fetchone()['total_scans']
+            result = cursor.fetchone()
+            total_scans = result['total_scans'] if result else 0
             
             cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
-            total_score = cursor.fetchone()['total_score']
+            result = cursor.fetchone()
+            total_score = result['total_score'] if result else 0
             
             
             cursor.execute("""
@@ -680,7 +697,8 @@ def stats():
                 WHERE scan_time >= datetime('now', '-30 days')
                     AND image_path != 'ADMIN_ADJUSTMENT'
             """)
-            active_users = cursor.fetchone()['active_users']
+            result = cursor.fetchone()
+            active_users = result['active_users'] if result else 0
         
         stats_data = {
             'total_members': total_members or 0,
@@ -735,6 +753,9 @@ def manage_members():
         
         # แปลงข้อมูลสำหรับ SQLite
         if isinstance(connection, sqlite3.Connection):
+            members = [dict(member) for member in members]
+        else:
+            # PostgreSQL กับ RealDictCursor return dict อยู่แล้ว
             members = [dict(member) for member in members]
         
         connection.close()
@@ -824,12 +845,19 @@ def admin_edit_score():
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
-        cursor = connection.cursor()
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor = connection.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = connection.cursor()
         
         # คำนวณคะแนนที่ต้องปรับ
         query = "SELECT SUM(score) as current_total FROM scan_logs WHERE rfid_id = %s" if isinstance(connection, psycopg2.extensions.connection) else "SELECT SUM(score) as current_total FROM scan_logs WHERE rfid_id = ?"
         cursor.execute(query, (rfid_id,))
-        current_total = cursor.fetchone()['current_total'] or 0
+        result = cursor.fetchone()
+        if isinstance(connection, sqlite3.Connection):
+            current_total = result['current_total'] if result and result['current_total'] else 0
+        else:
+            current_total = result['current_total'] if result and result['current_total'] else 0
         score_difference = new_score - current_total
         
         # เพิ่ม record ใหม่เพื่อปรับคะแนน
