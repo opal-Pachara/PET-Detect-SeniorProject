@@ -221,56 +221,38 @@ def index():
             
             cursor = connection.cursor()
         
-        # ดึงข้อมูลสมาชิกทั้งหมดเรียงตามคะแนน รวมชื่อจาก member_names
-        try:
-            if isinstance(connection, psycopg2.extensions.connection):
-                cursor.execute("""
-                    SELECT 
-                        s.rfid_id,
-                        m.display_name,
-                        SUM(s.score) as total_score,
-                        COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                        MAX(s.scan_time) as last_scan
-                    FROM scan_logs s
-                    LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
-                    GROUP BY s.rfid_id, m.display_name
-                    ORDER BY total_score DESC, scan_count DESC
-                """)
-            else:
-                cursor.execute("""
-                    SELECT 
-                        s.rfid_id,
-                        m.display_name,
-                        SUM(s.score) as total_score,
-                        COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                        MAX(s.scan_time) as last_scan
-                    FROM scan_logs s
-                    LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
-                    GROUP BY s.rfid_id, m.display_name
-                    ORDER BY total_score DESC, scan_count DESC
-                """)
-        except Exception as e:
-            print(f"Member names query fallback: {e}")
-            if isinstance(connection, psycopg2.extensions.connection):
-                cursor.execute("""
-                    SELECT rfid_id, NULL as display_name, SUM(score) as total_score,
-                        COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                        MAX(scan_time) as last_scan
-                    FROM scan_logs
-                    GROUP BY rfid_id
-                    ORDER BY total_score DESC, scan_count DESC
-                """)
-            else:
-                cursor.execute("""
-                    SELECT rfid_id, NULL as display_name, SUM(score) as total_score,
-                        COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                        MAX(scan_time) as last_scan
-                    FROM scan_logs
-                    GROUP BY rfid_id
-                    ORDER BY total_score DESC, scan_count DESC
-                """)
+        # ดึงข้อมูลสมาชิก (ไม่ใช้ JOIN เพื่อหลีกเลี่ยง error ตาราง member_names)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("""
+                SELECT rfid_id, SUM(score) as total_score,
+                    COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                    MAX(scan_time) as last_scan
+                FROM scan_logs
+                GROUP BY rfid_id
+                ORDER BY total_score DESC, scan_count DESC
+            """)
+        else:
+            cursor.execute("""
+                SELECT rfid_id, SUM(score) as total_score,
+                    COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                    MAX(scan_time) as last_scan
+                FROM scan_logs
+                GROUP BY rfid_id
+                ORDER BY total_score DESC, scan_count DESC
+            """)
         
         members = cursor.fetchall()
+        
+        # ดึงชื่อจาก member_names แยก (ถ้ามีตาราง)
+        names_map = {}
+        try:
+            cursor.execute("SELECT rfid_id, display_name FROM member_names")
+            for row in cursor.fetchall():
+                d = dict(row) if hasattr(row, 'keys') else {'rfid_id': row[0], 'display_name': row[1] if len(row) > 1 else None}
+                if d.get('rfid_id'):
+                    names_map[str(d['rfid_id'])] = d.get('display_name')
+        except Exception:
+            pass
         
         if isinstance(connection, sqlite3.Connection):
             members = [dict(row) for row in members]
@@ -279,7 +261,8 @@ def index():
         
         # สร้าง display_label: "ชื่อ RFID" หรือแค่ rfid_id
         for m in members:
-            dn = m.get('display_name')
+            dn = names_map.get(str(m.get('rfid_id', '')))
+            m['display_name'] = dn
             m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
         # ตรวจสอบข้อมูลที่ได้
@@ -762,54 +745,38 @@ def manage_members():
         else:
             cursor = connection.cursor()
         
-        # ดึงข้อมูลสมาชิกจาก scan_logs + member_names (ชื่อที่ Admin ตั้ง)
-        try:
-            if isinstance(connection, psycopg2.extensions.connection):
-                cursor.execute("""
-                    SELECT s.rfid_id, m.display_name,
-                           COALESCE(SUM(s.score), 0) as total_score,
-                           COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                           MAX(s.scan_time) as last_scan
-                    FROM scan_logs s
-                    LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
-                    GROUP BY s.rfid_id, m.display_name
-                    ORDER BY total_score DESC, scan_count DESC
-                """)
-            else:
-                cursor.execute("""
-                    SELECT s.rfid_id, m.display_name,
-                           COALESCE(SUM(s.score), 0) as total_score,
-                           COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                           MAX(s.scan_time) as last_scan
-                    FROM scan_logs s
-                    LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
-                    GROUP BY s.rfid_id, m.display_name
-                    ORDER BY total_score DESC, scan_count DESC
-                """)
-        except Exception as e:
-            print(f"Manage members query fallback: {e}")
-            if isinstance(connection, psycopg2.extensions.connection):
-                cursor.execute("""
-                    SELECT s.rfid_id, NULL as display_name,
-                           COALESCE(SUM(s.score), 0) as total_score,
-                           COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                           MAX(s.scan_time) as last_scan
-                    FROM scan_logs s
-                    GROUP BY s.rfid_id
-                    ORDER BY total_score DESC, scan_count DESC
-                """)
-            else:
-                cursor.execute("""
-                    SELECT s.rfid_id, NULL as display_name,
-                           COALESCE(SUM(s.score), 0) as total_score,
-                           COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                           MAX(s.scan_time) as last_scan
-                    FROM scan_logs s
-                    GROUP BY s.rfid_id
-                    ORDER BY total_score DESC, scan_count DESC
-                """)
+        # ดึงข้อมูลสมาชิก (ไม่ใช้ JOIN)
+        if isinstance(connection, psycopg2.extensions.connection):
+            cursor.execute("""
+                SELECT s.rfid_id, COALESCE(SUM(s.score), 0) as total_score,
+                       COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                       MAX(s.scan_time) as last_scan
+                FROM scan_logs s
+                GROUP BY s.rfid_id
+                ORDER BY total_score DESC, scan_count DESC
+            """)
+        else:
+            cursor.execute("""
+                SELECT s.rfid_id, COALESCE(SUM(s.score), 0) as total_score,
+                       COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                       MAX(s.scan_time) as last_scan
+                FROM scan_logs s
+                GROUP BY s.rfid_id
+                ORDER BY total_score DESC, scan_count DESC
+            """)
         
         members = cursor.fetchall()
+        
+        # ดึงชื่อจาก member_names แยก
+        names_map = {}
+        try:
+            cursor.execute("SELECT rfid_id, display_name FROM member_names")
+            for row in cursor.fetchall():
+                d = dict(row) if hasattr(row, 'keys') else {'rfid_id': row[0], 'display_name': row[1] if len(row) > 1 else None}
+                if d.get('rfid_id'):
+                    names_map[str(d['rfid_id'])] = d.get('display_name')
+        except Exception:
+            pass
         
         # แปลงข้อมูลสำหรับ SQLite และสร้าง display_label (ชื่อ RFID)
         if isinstance(connection, sqlite3.Connection):
@@ -818,7 +785,8 @@ def manage_members():
             members = [dict(member) for member in members]
         
         for m in members:
-            dn = m.get('display_name')
+            dn = names_map.get(str(m.get('rfid_id', '')))
+            m['display_name'] = dn
             m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
         connection.close()
