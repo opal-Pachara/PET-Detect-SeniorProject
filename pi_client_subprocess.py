@@ -86,22 +86,23 @@ class PETDetectSubprocess:
             print(f"LED setup error: {e}")
     
     def setup_buzzer(self):
-        """ตั้งค่า GPIO สำหรับ Buzzer (I/O pin -> GPIO 17)"""
+        """ตั้งค่า GPIO สำหรับ Buzzer (I/O pin -> GPIO 17)
+        โมดูลแบบ Active-LOW: LOW=ดัง, HIGH=เงียบ"""
         try:
             try:
                 GPIO.setmode(GPIO.BCM)
             except ValueError:
                 pass
-            GPIO.setup(self.buzzer_pin, GPIO.OUT, initial=GPIO.LOW)
+            GPIO.setup(self.buzzer_pin, GPIO.OUT, initial=GPIO.HIGH)  # HIGH=เงียบตอนเริ่ม
         except Exception as e:
             print(f"Buzzer setup error: {e}")
     
     def buzzer_beep(self, duration=0.15):
-        """ดัง Buzzer สั้นๆ (เมื่อแตะบัตรสำเร็จ)"""
+        """ดัง Buzzer สั้นๆ (เมื่อแตะบัตรสำเร็จ) - Active-LOW: ส่ง LOW = ดัง"""
         try:
-            GPIO.output(self.buzzer_pin, GPIO.HIGH)
+            GPIO.output(self.buzzer_pin, GPIO.LOW)   # เปิดเสียง
             time.sleep(duration)
-            GPIO.output(self.buzzer_pin, GPIO.LOW)
+            GPIO.output(self.buzzer_pin, GPIO.HIGH)  # ปิดเสียง
         except Exception as e:
             print(f"Buzzer error: {e}")
     
@@ -625,9 +626,9 @@ if __name__ == "__main__":
             if os.path.exists('rfid_helper.py'):
                 os.remove('rfid_helper.py')
             
-            # ปิด Buzzer
+            # ปิด Buzzer (HIGH = เงียบ สำหรับ Active-LOW module)
             try:
-                GPIO.output(self.buzzer_pin, GPIO.LOW)
+                GPIO.output(self.buzzer_pin, GPIO.HIGH)
             except Exception:
                 pass
             # Cleanup GPIO
