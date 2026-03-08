@@ -14,7 +14,6 @@ from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'pet_detect_secret_key_2025')
 
 # Database config
 DB_CONFIG = {
@@ -49,7 +48,7 @@ def get_db_connection():
             return None
 
 def init_database():
-    """สร้างตาราง"""
+    """สร้างตารางถ้ายังไม่มี"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -82,6 +81,12 @@ def init_database():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS member_names (
+                    rfid_id VARCHAR(50) PRIMARY KEY,
+                    display_name VARCHAR(100) NOT NULL
+                )
+            """)
         else:
             # SQLite ตาราง scan_logs และ admin_users
             cursor.execute("""
@@ -104,6 +109,12 @@ def init_database():
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS member_names (
+                    rfid_id TEXT PRIMARY KEY,
+                    display_name TEXT NOT NULL
                 )
             """)
         
@@ -210,43 +221,45 @@ def index():
             
             cursor = connection.cursor()
         
-        # ดึงข้อมูลสมาชิกทั้งหมดเรียงตามคะแนน
+        # ดึงข้อมูลสมาชิกทั้งหมดเรียงตามคะแนน รวมชื่อจาก member_names
         if isinstance(connection, psycopg2.extensions.connection):
-            
             cursor.execute("""
                 SELECT 
-                    rfid_id,
-                    rfid_id as full_name,
-                    rfid_id as username,
-                    '' as email,
-                    SUM(score) as total_score,
-                    COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                    MAX(scan_time) as last_scan
-                FROM scan_logs
-                GROUP BY rfid_id
+                    s.rfid_id,
+                    m.display_name,
+                    SUM(s.score) as total_score,
+                    COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                    MAX(s.scan_time) as last_scan
+                FROM scan_logs s
+                LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
+                GROUP BY s.rfid_id, m.display_name
                 ORDER BY total_score DESC, scan_count DESC
             """)
         else:
-            
             cursor.execute("""
                 SELECT 
-                    rfid_id,
-                    rfid_id as full_name,
-                    rfid_id as username,
-                    '' as email,
-                    SUM(score) as total_score,
-                    COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                    MAX(scan_time) as last_scan
-                FROM scan_logs
-                GROUP BY rfid_id
+                    s.rfid_id,
+                    m.display_name,
+                    SUM(s.score) as total_score,
+                    COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                    MAX(s.scan_time) as last_scan
+                FROM scan_logs s
+                LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
+                GROUP BY s.rfid_id, m.display_name
                 ORDER BY total_score DESC, scan_count DESC
             """)
         
         members = cursor.fetchall()
         
-        
         if isinstance(connection, sqlite3.Connection):
             members = [dict(row) for row in members]
+        else:
+            members = [dict(row) for row in members]
+        
+        # สร้าง display_label: "ชื่อ RFID" หรือแค่ rfid_id
+        for m in members:
+            dn = m.get('display_name')
+            m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
         # ตรวจสอบข้อมูลที่ได้
         print(f"DEBUG: Found {len(members)} members")
@@ -391,7 +404,7 @@ def admin_logout():
 
 @app.route('/api/debug/admin', methods=['GET'])
 def debug_admin():
-    """Debug endpoint สำหรับตรวจสอบ admin user"""
+    """Debug สำหรับตรวจสอบ admin"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -502,7 +515,7 @@ def create_admin_api():
 
 @app.route('/api/debug_data', methods=['GET'])
 def debug_data():
-    """API endpoint สำหรับดูข้อมูลในฐานข้อมูล"""
+    """API สำหรับดูข้อมูลในฐานข้อมูล"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -552,7 +565,7 @@ def debug_data():
             members_data = [dict(row) for row in members_data]
             tables = [dict(row) for row in tables]
         else:
-            # PostgreSQL กับ RealDictCursor return dict อยู่แล้ว แต่ต้องแปลง list
+            # PostgreSQL แปลงเป็น list
             members_data = [dict(row) for row in members_data]
             tables = [dict(table) for table in tables]
         
@@ -578,7 +591,7 @@ def debug_data():
         if isinstance(connection, sqlite3.Connection):
             recent_scans = [dict(row) for row in recent_scans]
         else:
-            # PostgreSQL กับ RealDictCursor return dict อยู่แล้ว
+            # PostgreSQL return เป็น dict
             recent_scans = [dict(scan) for scan in recent_scans]
         
         # สถิติรวม
@@ -609,7 +622,7 @@ def debug_data():
         if isinstance(connection, sqlite3.Connection):
             admin_users = [dict(row) for row in admin_users]
         else:
-            # PostgreSQL กับ RealDictCursor return dict อยู่แล้ว
+            # PostgreSQL return เป็น dict
             admin_users = [dict(user) for user in admin_users]
         
         # ตรวจสอบ database type
@@ -718,6 +731,7 @@ def stats():
 def manage_members():
     """หน้าจัดการสมาชิก"""
     try:
+        init_database()
         connection = get_db_connection()
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
@@ -727,36 +741,43 @@ def manage_members():
         else:
             cursor = connection.cursor()
         
-        # ดึงข้อมูลสมาชิกจาก scan_logs 
+        # ดึงข้อมูลสมาชิกจาก scan_logs + member_names (ชื่อที่ Admin ตั้ง)
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("""
                 SELECT s.rfid_id,
+                       m.display_name,
                        COALESCE(SUM(s.score), 0) as total_score,
                        COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
                        MAX(s.scan_time) as last_scan
                 FROM scan_logs s
-                GROUP BY s.rfid_id
+                LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
+                GROUP BY s.rfid_id, m.display_name
                 ORDER BY total_score DESC, scan_count DESC
             """)
         else:
             cursor.execute("""
                 SELECT s.rfid_id,
+                       m.display_name,
                        COALESCE(SUM(s.score), 0) as total_score,
                        COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
                        MAX(s.scan_time) as last_scan
                 FROM scan_logs s
-                GROUP BY s.rfid_id
+                LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
+                GROUP BY s.rfid_id, m.display_name
                 ORDER BY total_score DESC, scan_count DESC
             """)
         
         members = cursor.fetchall()
         
-        # แปลงข้อมูลสำหรับ SQLite
+        # แปลงข้อมูลสำหรับ SQLite และสร้าง display_label (ชื่อ RFID)
         if isinstance(connection, sqlite3.Connection):
             members = [dict(member) for member in members]
         else:
-            # PostgreSQL กับ RealDictCursor return dict อยู่แล้ว
             members = [dict(member) for member in members]
+        
+        for m in members:
+            dn = m.get('display_name')
+            m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
         connection.close()
         return render_template('admin_members.html', members=members)
@@ -881,6 +902,54 @@ def admin_edit_score():
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
+@app.route('/api/admin/edit-member-name', methods=['POST'])
+@login_required
+def admin_edit_member_name():
+    """แก้ไขชื่อสมาชิก (รูปแบบ: ชื่อ RFID)"""
+    try:
+        data = request.get_json()
+        rfid_id = data.get('rfid_id')
+        display_name = (data.get('display_name') or '').strip()
+        
+        if not rfid_id:
+            return jsonify({'success': False, 'message': 'ไม่พบ RFID ID'})
+        
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        
+        cursor = connection.cursor()
+        
+        if display_name:
+            # Upsert: ถ้ามีอยู่แล้วให้อัปเดต ยังไม่มีให้เพิ่ม
+            if isinstance(connection, psycopg2.extensions.connection):
+                cursor.execute("""
+                    INSERT INTO member_names (rfid_id, display_name)
+                    VALUES (%s, %s)
+                    ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
+                """, (rfid_id, display_name))
+            else:
+                cursor.execute("""
+                    INSERT OR REPLACE INTO member_names (rfid_id, display_name)
+                    VALUES (?, ?)
+                """, (rfid_id, display_name))
+        else:
+            # ลบชื่อออก กลับไปใช้แค่ RFID
+            if isinstance(connection, psycopg2.extensions.connection):
+                cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
+            else:
+                cursor.execute("DELETE FROM member_names WHERE rfid_id = ?", (rfid_id,))
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return jsonify({'success': True, 'message': 'แก้ไขชื่อสำเร็จ'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+
+
 @app.route('/api/admin/delete-member', methods=['POST'])
 @login_required
 def admin_delete_member():
@@ -898,11 +967,13 @@ def admin_delete_member():
         
         cursor = connection.cursor()
         
-        # ลบข้อมูลจาก scan_logs
+        # ลบข้อมูลจาก scan_logs และ member_names
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("DELETE FROM scan_logs WHERE rfid_id = %s", (rfid_id,))
+            cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
         else:
             cursor.execute("DELETE FROM scan_logs WHERE rfid_id = ?", (rfid_id,))
+            cursor.execute("DELETE FROM member_names WHERE rfid_id = ?", (rfid_id,))
         
         connection.commit()
         cursor.close()
@@ -928,7 +999,6 @@ def add_score():
         if request.is_json:
             data = request.get_json() or {}
         else:
-            
             try:
                 data = request.get_json(force=True) or {}
             except:
@@ -941,14 +1011,7 @@ def add_score():
         label_count = data.get('label_count', 0)
         image_path = data.get('image_path', '')
         
-        
-        
         score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
-        
-        # Debug logging
-        print(f"DEBUG: Received data: {data}")
-        print(f"DEBUG: RFID ID: {rfid_id}")
-        print(f"DEBUG: Score: {score}")
         
         if not rfid_id:
             return jsonify({'success': False, 'message': 'ไม่พบ RFID ID'})
@@ -973,14 +1036,10 @@ def add_score():
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
         
-       
-        # คะแนนรวมจะคำนวณจาก scan_logs
-        
         connection.commit()
         cursor.close()
         connection.close()
         
-        print(f"DEBUG: Successfully saved score for RFID {rfid_id}")
         return jsonify({'success': True, 'message': 'บันทึกคะแนนสำเร็จ'})
         
     except Exception as e:
@@ -988,27 +1047,10 @@ def add_score():
 
 
 if __name__ == '__main__':
-    print("PET Detect Member System - PostgreSQL Version")
-    print("=" * 50)
-    print("Available Routes:")
-    print("   - GET  /                    - หน้าแสดงตารางคะแนน")
-    print("   - GET/POST /admin/login     - ล็อกอินผู้ดูแลระบบ")
-    print("   - GET  /admin               - หน้าผู้ดูแลระบบ")
-    print("   - GET  /admin/logout        - ออกจากระบบ")
-    print("   - GET  /stats               - หน้าสถิติระบบ")
-    print("   - GET  /manage_members      - จัดการสมาชิก")
-    print("   - GET  /scan_history        - ประวัติการสแกน")
-    print("   - POST /api/add_score       - เพิ่มคะแนนจาก Pi")
-    print("   - POST /api/admin/edit-score - แก้ไขคะแนน")
-    print("   - POST /api/admin/delete-member - ลบสมาชิก")
-    print("   - GET  /api/debug/admin     - ตรวจสอบ admin user")
-    print("   - POST /api/create-admin    - สร้าง admin user")
-    print("   - GET  /api/debug_data      - ดูข้อมูลฐานข้อมูลโดยตรง")
-    print("Press Ctrl+C to stop")
     
     
     if init_database():
-        print("Database ready!")
+        print("Database พร้อม")
         
         create_admin_user()
         # Get port
@@ -1017,3 +1059,4 @@ if __name__ == '__main__':
     else:
         print("Database initialization failed")
         print("Please check PostgreSQL server and configuration")
+

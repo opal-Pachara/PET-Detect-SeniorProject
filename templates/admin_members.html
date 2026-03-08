@@ -70,7 +70,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="member-card">
                         <div class="member-info">
-                            <h5>{{ member.rfid_id }}</h5>
+                            <h5>{{ member.display_label }}</h5>
                             <p class="text-muted mb-2">
                                 <strong>RFID:</strong> {{ member.rfid_id }}
                             </p>
@@ -82,11 +82,14 @@
                                     สแกน: {{ member.scan_count|default(0) }} ครั้ง
                                 </small>
                             </div>
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-sm btn-info" onclick="editName('{{ member.rfid_id|e }}', {{ (member.display_name or '')|tojson }})">
+                                    แก้ไขชื่อ
+                                </button>
                                 <button class="btn btn-sm btn-warning" onclick="editScore('{{ member.rfid_id }}', '{{ member.total_score|default(0) }}')">
                                     แก้ไขคะแนน
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteMember('{{ member.rfid_id }}', '{{ member.rfid_id }}')">
+                                <button class="btn btn-sm btn-danger" onclick="deleteMember('{{ member.rfid_id }}', '{{ member.display_label }}')">
                                     ลบสมาชิก
                                 </button>
                             </div>
@@ -166,6 +169,32 @@
                 } else {
                     alert('คะแนนต้องเป็นตัวเลขที่มากกว่าหรือเท่ากับ 0');
                 }
+            }
+        }
+        
+        function editName(rfidId, currentName) {
+            const name = prompt('แก้ไขชื่อสมาชิก (เลข RFID จะแสดงต่อท้ายอัตโนมัติ)\nRFID: ' + rfidId + '\nชื่อใหม่:', currentName || '');
+            if (name !== null) {
+                fetch('/api/admin/edit-member-name', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rfid_id: rfidId,
+                        display_name: name.trim()
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('แก้ไขชื่อสำเร็จ!');
+                        location.reload();
+                    } else {
+                        alert('เกิดข้อผิดพลาด: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                });
             }
         }
         
