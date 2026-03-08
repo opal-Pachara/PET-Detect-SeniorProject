@@ -231,13 +231,21 @@ class PETDetectSubprocess:
                 print(f"LCD display error: {e}")
     
     def lcd_show_score(self, card_id, score):
-        """Stage 6: Thank You / View Points"""
+        """Stage 6: แสดงคนละหน้า - หน้า 1: RFID + Score, หน้า 2: Completed Thank You"""
         if self.lcd:
             try:
+                # หน้า 1: RFID + Score
                 self.lcd.clear()
-                self.lcd.write_string("Thank You")
+                self.lcd.write_string((f"RFID:{card_id}")[:16])
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string("View Points")
+                self.lcd.write_string((f"Score: {score} pts")[:16])
+                time.sleep(3)
+                # หน้า 2: Completed Thank You
+                self.lcd.clear()
+                self.lcd.write_string("Completed")
+                self.lcd.cursor_pos = (1, 0)
+                self.lcd.write_string("Thank You")
+                time.sleep(3)
             except Exception as e:
                 print(f"LCD display error: {e}")
 
