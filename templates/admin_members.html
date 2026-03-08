@@ -83,7 +83,7 @@
                                 </small>
                             </div>
                             <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn btn-sm btn-info" onclick="editName('{{ member.rfid_id|e }}', {{ (member.display_name or '')|tojson }})">
+                                <button class="btn btn-sm btn-info" type="button" data-rfid="{{ member.rfid_id|e }}" data-name="{{ (member.display_name or '')|e }}" onclick="editName(this.dataset.rfid, this.dataset.name)">
                                     แก้ไขชื่อ
                                 </button>
                                 <button class="btn btn-sm btn-warning" onclick="editScore('{{ member.rfid_id }}', '{{ member.total_score|default(0) }}')">
