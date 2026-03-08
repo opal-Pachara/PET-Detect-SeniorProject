@@ -31,7 +31,7 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-API_URL = "https://pet-detect-ai-api.onrender.com"  # AI API
+API_URL = "https://pet-detect-ai-api.onrender.com"  # API
 
 class PETDetectSubprocess:
     def __init__(self, api_url=API_URL):
@@ -39,7 +39,8 @@ class PETDetectSubprocess:
         self.running = True
         self.camera = None
         self.stepper = None
-        self.led_pin = 4   # GPIO 4 สำหรับ ไฟ
+        self.led_pin = 4   # GPIO 4 สำหรับ LED
+        self.buzzer_pin = 17   # GPIO 17 สำหรับ Buzzer (VCC/GND/I/O)
         self.lcd = None    
         
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -51,6 +52,7 @@ class PETDetectSubprocess:
         self.create_rfid_helper()
         
         self.setup_led()
+        self.setup_buzzer()
         
         # Stepper Motor
         try:
@@ -82,6 +84,26 @@ class PETDetectSubprocess:
             
         except Exception as e:
             print(f"LED setup error: {e}")
+    
+    def setup_buzzer(self):
+        """ตั้งค่า GPIO สำหรับ Buzzer (I/O pin -> GPIO 17)"""
+        try:
+            try:
+                GPIO.setmode(GPIO.BCM)
+            except ValueError:
+                pass
+            GPIO.setup(self.buzzer_pin, GPIO.OUT, initial=GPIO.LOW)
+        except Exception as e:
+            print(f"Buzzer setup error: {e}")
+    
+    def buzzer_beep(self, duration=0.15):
+        """ดัง Buzzer สั้นๆ (เมื่อแตะบัตรสำเร็จ)"""
+        try:
+            GPIO.output(self.buzzer_pin, GPIO.HIGH)
+            time.sleep(duration)
+            GPIO.output(self.buzzer_pin, GPIO.LOW)
+        except Exception as e:
+            print(f"Buzzer error: {e}")
     
     def setup_lcd(self):
         """ตั้งค่า LCD Display"""
@@ -259,9 +281,11 @@ if __name__ == "__main__":
                             text = data.get('text', '')
                             print(f"RFID detected - ID: {card_id}")
                             
-                            # เปิด LED เมื่อแตะบัตร RFID (ติดค้างจนจบกระบวนการ)
+                            # เปิด LED เมื่อแตะบัตร RFID
                             GPIO.output(self.led_pin, GPIO.HIGH)
                             print("LED ON")
+                            #  ดัง Buzzer เมื่อแตะบัตรสำเร็จ
+                            self.buzzer_beep()
                             
                             return card_id, text
                     except json.JSONDecodeError:
@@ -601,6 +625,11 @@ if __name__ == "__main__":
             if os.path.exists('rfid_helper.py'):
                 os.remove('rfid_helper.py')
             
+            # ปิด Buzzer
+            try:
+                GPIO.output(self.buzzer_pin, GPIO.LOW)
+            except Exception:
+                pass
             # Cleanup GPIO
             try:
                 GPIO.cleanup()
@@ -612,7 +641,7 @@ if __name__ == "__main__":
             logger.error(f"Cleanup error: {e}")
 
 def main():
-    """Main function"""
+    
     print("PET Detect System")
     print("=" * 60)
     
