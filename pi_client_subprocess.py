@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 """
-ใช้ subprocess RFID 
+PET Detect - Raspberry Pi Client
+ระบบสแกนขวด PET บน Raspberry Pi
 
+หน้าที่หลัก:
+- อ่านบัตร RFID (ผ่าน subprocess แยกเพื่อหลีกเลี่ยง GPIO conflict)
+- ถ่ายภาพด้วยกล้อง USB
+- ส่งภาพไป Cloud API (YOLOv11) วิเคราะห์
+- แสดงผลบน LCD, LED, Buzzer
+- บันทึกคะแนนไปยัง Member System
+- ควบคุม Stepper Motor คัดแยกขวด/กระป๋อง
 """
 
 import time
@@ -32,7 +40,8 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-API_URL = "https://pet-detect-ai-api.onrender.com"  # API
+# ============ ค่าคงที่ ============
+API_URL = "https://pet-detect-ai-api.onrender.com"  # Cloud AI API สำหรับวิเคราะห์ภาพ
 
 
 def _silence_buzzer_on_exit():
@@ -46,7 +55,9 @@ def _silence_buzzer_on_exit():
 atexit.register(_silence_buzzer_on_exit)
 
 
+# ============ คลาสหลัก ============
 class PETDetectSubprocess:
+    """คลาสควบคุมระบบสแกน PET บน Raspberry Pi"""
     def __init__(self, api_url=API_URL):
         self.api_url = api_url.rstrip('/')
         self.running = True
@@ -99,8 +110,7 @@ class PETDetectSubprocess:
             print(f"LED setup error: {e}")
     
     def setup_buzzer(self):
-        """ตั้งค่า GPIO สำหรับ Buzzer (I/O pin -> GPIO 17)
-        โมดูลแบบ Active-LOW: LOW=ดัง, HIGH=เงียบ"""
+        """ตั้งค่า Buzzer (GPIO 17) - โมดูล 3 ขา VCC/GND/I/O, Active-LOW: LOW=ดัง HIGH=เงียบ"""
         try:
             try:
                 GPIO.setmode(GPIO.BCM)
@@ -111,7 +121,7 @@ class PETDetectSubprocess:
             print(f"Buzzer setup error: {e}")
     
     def buzzer_beep(self, duration=0.15):
-        """ดัง Buzzer สั้นๆ (เมื่อแตะบัตรสำเร็จ) - Active-LOW: ส่ง LOW = ดัง"""
+        """ดัง Buzzer สั้นๆ เมื่อแตะบัตรสำเร็จ (Active-LOW)"""
         try:
             GPIO.output(self.buzzer_pin, GPIO.LOW)   # เปิดเสียง
             time.sleep(duration)
@@ -120,7 +130,7 @@ class PETDetectSubprocess:
             print(f"Buzzer error: {e}")
     
     def setup_lcd(self):
-        """ตั้งค่า LCD Display"""
+        """ตั้งค่า LCD I2C (PCF8574 0x27) - แสดงสถานะแบบ 2 บรรทัด"""
         if LCD_AVAILABLE:
             try:
                 self.lcd = CharLCD('PCF8574', 0x27)  # Address 0x27
@@ -140,8 +150,9 @@ class PETDetectSubprocess:
         else:
             print("LCD disabled - RPLCD not installed")
     
+    # ---------- ส่วน LED Control ----------
     def led_on(self, duration=2):
-        """เปิด LED เป็นเวลา duration วินาที (Direct Connection)"""
+        """เปิด LED เป็นเวลา duration วินาที"""
         try:
             GPIO.output(self.led_pin, GPIO.HIGH)  # เปิดไฟ
             print("LED ON")
@@ -171,8 +182,9 @@ class PETDetectSubprocess:
         except Exception as e:
             print(f"LED OFF error: {e}")
     
+    # ---------- ส่วน LCD Display (ภาษาอังกฤษเพราะ LCD ไม่รองรับไทย) ----------
     def lcd_show_waiting(self):
-        """แสดงรอการแตะบัตร"""
+        """แสดงข้อความรอการแตะบัตร"""
         if self.lcd:
             try:
                 self.lcd.clear()
@@ -233,8 +245,9 @@ class PETDetectSubprocess:
         self.cleanup()
         sys.exit(0)
     
+    # ---------- ส่วน RFID ----------
     def create_rfid_helper(self):
-        """สร้าง สคริป RFID"""
+        """สร้างไฟล์ rfid_helper.py - สคริปแยกสำหรับอ่าน RFID (หลีกเลี่ยง GPIO conflict)"""
         rfid_script = """#!/usr/bin/env python3
 import time
 import json
@@ -272,7 +285,7 @@ if __name__ == "__main__":
         os.chmod('rfid_helper.py', 0o755)
     
     def read_rfid_subprocess(self, timeout=30):
-        """อ่าน RFID ผ่าน subprocess"""
+        """รออ่านบัตร RFID ผ่าน subprocess - return (card_id, text) หรือ (None, None)"""
         print(f"รอสแกน RFID (timeout: {timeout} วินาที)...")
         
         start_time = time.time()
@@ -316,8 +329,9 @@ if __name__ == "__main__":
         print("RFID timeout")
         return None, None
     
+    # ---------- ส่วนกล้อง ----------
     def open_camera(self):
-        """เปิดกล้อง"""
+        """เปิดกล้อง USB (0) ขนาด 640x480"""
         try:
             print("เปิดกล้อง...")
             self.camera = cv2.VideoCapture(0)
@@ -336,7 +350,7 @@ if __name__ == "__main__":
             return False
     
     def capture_image(self):
-        """ถ่ายภาพ"""
+        """ถ่ายภาพและบันทึกเป็น captured_image.jpg"""
         if not self.camera:
             return None
         
@@ -363,8 +377,9 @@ if __name__ == "__main__":
             self.camera = None
             print("ปิดกล้องแล้ว")
     
+    # ---------- ส่วน API ----------
     def send_image_to_api(self, image_path):
-        """ส่งภาพไปยัง API"""
+        """ส่งภาพไป Cloud AI API (/api/scan) - ได้ผลการตรวจจับ bottle, can, cap, label"""
         try:
             print("ส่งภาพไป AI API")
             
@@ -390,7 +405,7 @@ if __name__ == "__main__":
             return None
     
     def process_scan_result(self, result_data, card_id=None):
-        """แสดงผลและบันทึกคะแนน"""
+        """คำนวณคะแนน แสดงผล LCD บันทึกไปเว็บ (Bottle +50, Can +100, Cap -10, Label -10)"""
         if not result_data or not result_data.get('success'):
             print("ไม่ได้รับผล")
             return
@@ -427,7 +442,7 @@ if __name__ == "__main__":
             self.save_score_to_web(card_id, result_data)
     
     def save_score_to_web(self, card_id, result):
-        """ส่งคะเเนนไปบันทึกใน database"""
+        """ส่งคะแนนไป Member System API (/api/add_score) บันทึกลง database"""
         try:
             
             bottle_count = result.get('bottle_count', 0)
@@ -479,8 +494,9 @@ if __name__ == "__main__":
             print(f"Web score save error: {e}")
             logger.debug(f"Web score save failed: {e}")
     
+    # ---------- ส่วน Stepper Motor ----------
     def control_stepper(self, result_data):
-        """ควบคุม Stepper Motor"""
+        """ควบคุม Stepper Motor หมุนคัดแยก - ขวด=ซ้าย, กระป๋อง=ขวา"""
         if not self.stepper:
             print("Stepper motor not available")
             return
@@ -528,26 +544,25 @@ if __name__ == "__main__":
         
         print("=" * 35)
     
+    # ---------- ส่วนหลัก - การสแกน ----------
     def run_single_scan(self):
-        """รันการสแกนครั้งเดียว"""
+        """รันการสแกน 1 รอบ: RFID → ถ่ายรูป → ส่ง API → แสดงผล → บันทึกคะแนน → Stepper"""
         print("\nเริ่มการสแกน")
         print("=" * 50)
         
         self.lcd_show_waiting()
         
-        #สแกน RFID ผ่าน subprocess
+        # ขั้นตอนที่ 1: สแกน RFID
         card_id, text = self.read_rfid_subprocess(timeout=30)
         if not card_id:
             print("ไม่พบบัตร RFID")
             return False
         
-        # แสดงเลข RFID
+        # ขั้นตอนที่ 2: แสดงเลข RFID บน LCD
         self.lcd_show_rfid(card_id)
-        
-        # แสดงสถานะกำลังสแกน
         self.lcd_show_scanning()
         
-        #เปิดกล้องและถ่ายภาพ
+        # ขั้นตอนที่ 3: เปิดกล้องและถ่ายภาพ
         if not self.open_camera():
             return False
         
@@ -557,14 +572,13 @@ if __name__ == "__main__":
         if not image_path:
             return False
         
-        #ส่งไปยัง API
+        # ขั้นตอนที่ 4: ส่งภาพไป Cloud AI API
         result = self.send_image_to_api(image_path)
         if not result:
             return False
         
-        #แสดงผลและบันทึกคะแนน
+        # ขั้นตอนที่ 5: แสดงผล LCD บันทึกคะแนนไปเว็บ ควบคุม Stepper
         self.process_scan_result(result, card_id)
-        
         self.control_stepper(result)
         
         GPIO.output(self.led_pin, GPIO.LOW)
@@ -574,7 +588,7 @@ if __name__ == "__main__":
         return True
     
     def run_continuous_scan_system(self):
-        """รันระบบสแกนต่อเนื่อง"""
+        """รันระบบสแกนต่อเนื่องแบบ loop - รอ RFID → สแกน → รอ 3 วินาที → วนซ้ำ"""
         print("ระบบสแกน PET ")
         print("=" * 60)
         
@@ -610,7 +624,7 @@ if __name__ == "__main__":
                 time.sleep(1)
     
     def cleanup(self):
-        """cleanup และ ปิดระบบ"""
+        """ปิดกล้อง LCD LED Buzzer Stepper ลบ rfid_helper.py (ไม่ cleanup Buzzer เพื่อให้เงียบหลังปิด)"""
         try:
             if self.camera:
                 self.close_camera()
@@ -657,8 +671,9 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
 
+# ============ Main ============
 def main():
-    
+    """จุดเริ่มต้น - สร้าง client และรันระบบสแกนต่อเนื่อง"""
     print("PET Detect System")
     print("=" * 60)
     

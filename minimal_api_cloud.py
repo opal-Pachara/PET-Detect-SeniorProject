@@ -76,7 +76,7 @@ if model is None:
 
 @app.route('/', methods=['GET'])
 def home():
-    """Root endpoint to check if API is running"""
+    """เช็ค API run ไหม"""
     return jsonify({
         'status': 'running',
         'service': 'PET Detect AI API',
@@ -88,7 +88,7 @@ def home():
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
-    """Image analysis endpoint"""
+    """วิเคราะห์ภาพ"""
     if not model:
         return jsonify({
             'success': False,
@@ -102,17 +102,17 @@ def scan():
         }), 400
     
     try:
-        # Get image
+        # รับภาพ
         image_file = request.files['image']
         
-        # Read image
+        # อ่านภาพ
         image_bytes = image_file.read()
         image = Image.open(io.BytesIO(image_bytes))
         
         image_array = np.array(image)
         logger.info(f"Image processed: {image_array.shape}")
         
-        # Run YOLO
+        # รัน YOLO
         results = model(image_array)
         
         bottles = 0
@@ -181,13 +181,12 @@ def scan():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
-    print(f"Start PET Detect API...")
+    
     print(f"Port: {port}")
     print(f"Model path: model-yolov11/best.pt")
     print(f"Model status: {'Loaded' if model else 'Failed'}")
     print("Available endpoints:")
     print("   - POST /api/scan - Image analysis")
-    print("Ctrl+C to stop")
     
-    # Use gunicorn 
+    
     app.run(host='0.0.0.0', port=port, debug=False)

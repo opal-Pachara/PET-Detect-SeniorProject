@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-PostgreSQL Render
+member_system_postgresql.py - ระบบจัดการสมาชิก PET Detect
 
+- Flask Web Application สำหรับดูคะแนน สมาชิก และจัดการข้อมูล
+- ใช้ PostgreSQL บน Render (production) หรือ SQLite (fallback ท้องถิ่น)
+- ตารางหลัก: scan_logs (ประวัติสแกน), admin_users (ผู้ดูแล), member_names (ชื่อสมาชิก)
+- API สำหรับ Pi client: /api/add_score (บันทึกคะแนนจากการสแกน)
 """
 
 import os
@@ -16,7 +20,8 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
 
-# Database config
+# ==================== Database Config ====================
+# โหลดจาก Environment (Render) หรือใช้ค่าเริ่มต้น
 DB_CONFIG = {
     'host': os.environ.get('DB_HOST', 'localhost'),
     'port': os.environ.get('DB_PORT', '5432'),
@@ -28,6 +33,7 @@ DB_CONFIG = {
 
 print(f"Database Config: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']} (user: {DB_CONFIG['user']})")
 
+# ==================== Database Connection & Init ====================
 def get_db_connection():
     """สร้างการเชื่อมต่อฐานข้อมูล PostgreSQL เเละ SQLite fallback"""
     try:
@@ -47,6 +53,7 @@ def get_db_connection():
         except Exception as sqlite_error:
             print(f"SQLite connection also failed: {sqlite_error}")
             return None
+
 
 def init_database():
     """สร้างตารางถ้ายังไม่มี"""
@@ -130,16 +137,17 @@ def init_database():
         print(f"Database initialization error: {e}")
         return False
 
+# ==================== Authentication Utilities ====================
 def hash_password(password):
-    """การเข้ารหัส"""
+    """เข้ารหัสรหัสผ่านด้วย SHA256"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_password(password, hashed):
-    """ตรวจสอบรหัส"""
+    """ตรวจสอบรหัสผ่านว่าตรงกับ hash หรือไม่"""
     return hash_password(password) == hashed
 
 def login_required(f):
-    """ตรวจสอบการล็อกอิน"""
+    """decorator ตรวจสอบว่าล็อกอินแล้ว ถ้ายัง redirect ไปหน้า login"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('admin_logged_in'):
@@ -204,9 +212,10 @@ def create_admin_user():
         print(f"DEBUG: General error in create_admin_user: {e}")
         return False
 
+# ==================== Routes - หน้าหลัก / สมาชิก ====================
 @app.route('/', methods=['GET'])
 def index():
-    """หน้าหลัก ตารางคะแนน"""
+    """หน้าหลัก แสดงตารางคะแนนสมาชิกและสถิติรวม"""
     try:
         # สร้างตารางถ้าไม่มี
         init_database()
@@ -313,9 +322,10 @@ def index():
                              total_score=0,
                              total_scans=0)
 
+# ==================== Routes - Admin (ล็อกอิน / จัดการ) ====================
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
-    """หน้าล็อกอินผู้ดูแลระบบ"""
+    """หน้ารับล็อกอิน admin - ตรวจสอบ username/password กับ admin_users"""
     if request.method == 'GET':
         if session.get('admin_logged_in'):
             return redirect(url_for('admin'))
@@ -407,6 +417,7 @@ def admin_logout():
     flash('ออกจากระบบเรียบร้อย', 'info')
     return redirect(url_for('admin_login'))
 
+# ==================== API Debug ====================
 @app.route('/api/debug/admin', methods=['GET'])
 def debug_admin():
     """Debug สำหรับตรวจสอบ admin"""
@@ -467,6 +478,7 @@ def debug_admin():
     except Exception as e:
         return jsonify({'error': str(e)})
 
+
 @app.route('/api/create-admin', methods=['POST'])
 def create_admin_api():
     """API endpoint สำหรับสร้าง admin user"""
@@ -518,6 +530,7 @@ def create_admin_api():
         print(f"DEBUG: Error creating admin user: {e}")
         return jsonify({'error': str(e)})
 
+# ==================== API Debug Data ====================
 @app.route('/api/debug_data', methods=['GET'])
 def debug_data():
     """API สำหรับดูข้อมูลในฐานข้อมูล"""
@@ -657,11 +670,11 @@ def debug_data():
             'message': 'Failed to retrieve debug data'
         })
 
-
+# ==================== Routes - สถิติ / จัดการสมาชิก / ประวัติ ====================
 @app.route('/stats', methods=['GET'])
 @login_required
 def stats():
-    """หน้าสถิติการใช้งานระบบ"""
+    """หน้าสถิติ: จำนวนสมาชิก การสแกนรวม คะแนนรวม ผู้ใช้ 30 วันล่าสุด"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -734,7 +747,7 @@ def stats():
 @app.route('/manage_members', methods=['GET'])
 @login_required
 def manage_members():
-    """หน้าจัดการสมาชิก"""
+    """หน้าจัดการสมาชิก: แก้ไขคะแนน แก้ชื่อ ลบสมาชิก"""
     try:
         init_database()
         connection = get_db_connection()
@@ -799,7 +812,7 @@ def manage_members():
 @app.route('/scan_history', methods=['GET'])
 @login_required
 def scan_history():
-    """หน้าประวัติการสแกน"""
+    """หน้าประวัติการสแกน 100 รายการล่าสุด (ไม่รวม ADMIN_ADJUSTMENT)"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -860,11 +873,11 @@ def scan_history():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
+# ==================== API Admin (แก้ไขคะแนน / ชื่อ / ลบสมาชิก) ====================
 @app.route('/api/admin/edit-score', methods=['POST'])
 @login_required
 def admin_edit_score():
-    """แก้ไขคะแนนสมาชิก"""
+    """แก้ไขคะแนนรวมสมาชิก โดยเพิ่ม record ADMIN_ADJUSTMENT เพื่อให้คะแนนรวมตรงกับค่าที่ตั้ง"""
     try:
         data = request.get_json()
         rfid_id = data.get('rfid_id')
@@ -916,7 +929,7 @@ def admin_edit_score():
 @app.route('/api/admin/edit-member-name', methods=['POST'])
 @login_required
 def admin_edit_member_name():
-    """แก้ไขชื่อสมาชิก (รูปแบบ: ชื่อ RFID)"""
+    """เพิ่ม/แก้ไขชื่อแสดงใน member_names (ใช้เป็น display_label แบบ "ชื่อ RFID")"""
     try:
         data = request.get_json()
         rfid_id = data.get('rfid_id')
@@ -966,7 +979,7 @@ def admin_edit_member_name():
 @app.route('/api/admin/delete-member', methods=['POST'])
 @login_required
 def admin_delete_member():
-    """ลบสมาชิก"""
+    """ลบข้อมูลสมาชิกจาก scan_logs และ member_names"""
     try:
         data = request.get_json()
         rfid_id = data.get('rfid_id')
@@ -1003,13 +1016,10 @@ def admin_delete_member():
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
-
-
-
-
+# ==================== API Pi Client (รับคะแนนจากการสแกน) ====================
 @app.route('/api/add_score', methods=['POST'])
 def add_score():
-    """เพิ่มคะแนนจาก RFID scan"""
+    """รับข้อมูลจาก Pi หลังสแกน บันทึกลง scan_logs คำนวณ score จาก bottle/can/cap/label"""
     try:
         # สร้างตารางถ้ายังไม่มี
         init_database()
@@ -1030,6 +1040,7 @@ def add_score():
         label_count = data.get('label_count', 0)
         image_path = data.get('image_path', '')
         
+        # คำนวณคะแนน: ขวด+50 กระป๋อง+100 แก๊ป-10 ฉลาก-10
         score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
         
         if not rfid_id:
@@ -1065,6 +1076,7 @@ def add_score():
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
 
+# ==================== Error Handler ====================
 @app.errorhandler(500)
 def internal_error(e):
     """แสดง error จริงเมื่อเกิด 500 (เพื่อ debug)"""
@@ -1073,9 +1085,8 @@ def internal_error(e):
     return f'<pre style="white-space:pre-wrap;font-size:12px;">Internal Server Error\n\n{tb}</pre>', 500
 
 
+# ==================== Main ====================
 if __name__ == '__main__':
-    
-    
     if init_database():
         print("Database พร้อม")
         

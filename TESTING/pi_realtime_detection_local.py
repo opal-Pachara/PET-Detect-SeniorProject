@@ -9,7 +9,10 @@ import time
 import torch
 from ultralytics import YOLO
 
-model_path = 'model-yolov11/best.pt'
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+model_path = os.path.join(project_root, 'model-yolov11', 'best.pt')
 
 try:
     model = YOLO(model_path)
