@@ -131,7 +131,7 @@ class PETDetectSubprocess:
                 print("LCD Display initialized")
                 time.sleep(2)
                 self.lcd.clear()
-                self.lcd.write_string("กรุณาแตะบัตร")
+                self.lcd.write_string("Tap card")
                 self.lcd.cursor_pos = (1, 0)
                 self.lcd.write_string("Waiting...")
             except Exception as e:
@@ -176,7 +176,7 @@ class PETDetectSubprocess:
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string("กรุณาแตะบัตร")
+                self.lcd.write_string("Tap card")
                 self.lcd.cursor_pos = (1, 0)
                 self.lcd.write_string("Waiting...")
             except Exception as e:
@@ -194,13 +194,13 @@ class PETDetectSubprocess:
                 print(f"LCD display error: {e}")
     
     def lcd_show_scanning(self):
-        """แสดงสถานะกำลังสแกน"""
+        """แสดงสถานะกำลังสแกน (ใช้ภาษาอังกฤษเพราะ LCD มักไม่รองรับไทย)"""
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string("กำลังสแกน...")
+                self.lcd.write_string("Scanning...")
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string("Processing...")
+                self.lcd.write_string("Processing")
             except Exception as e:
                 print(f"LCD display error: {e}")
     
