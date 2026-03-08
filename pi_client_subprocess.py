@@ -135,15 +135,11 @@ class PETDetectSubprocess:
             try:
                 self.lcd = CharLCD('PCF8574', 0x27)  # Address 0x27
                 self.lcd.clear()
-                self.lcd.write_string("PET Detect System")
+                self.lcd.write_string("Insert Item")
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string("Initializing...")
+                self.lcd.write_string("Scan Card")
                 print("LCD Display initialized")
                 time.sleep(2)
-                self.lcd.clear()
-                self.lcd.write_string("Tap card")
-                self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string("Waiting...")
             except Exception as e:
                 print(f"LCD setup error: {e}")
                 self.lcd = None
@@ -184,58 +180,64 @@ class PETDetectSubprocess:
     
     # ---------- ส่วน LCD Display (ภาษาอังกฤษเพราะ LCD ไม่รองรับไทย) ----------
     def lcd_show_waiting(self):
-        """แสดงข้อความรอการแตะบัตร"""
+        """Stage 1: ใส่ขวดก่อน ค่อยแตะบัตร - Insert Item / Scan Card"""
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string("Tap card")
+                self.lcd.write_string("Insert Item")
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string("Waiting...")
+                self.lcd.write_string("Scan Card")
             except Exception as e:
                 print(f"LCD display error: {e}")
     
     def lcd_show_rfid(self, card_id):
-        """แสดงเลข RFID ของบัตร"""
+        """Stage 2: หลังแตะบัตรสำเร็จ - Processing"""
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string("RFID:")
+                self.lcd.write_string("Processing")
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string(f"{card_id}")
+                self.lcd.write_string("")
             except Exception as e:
                 print(f"LCD display error: {e}")
     
     def lcd_show_scanning(self):
-        """แสดงสถานะกำลังสแกน (ใช้ภาษาอังกฤษเพราะ LCD มักไม่รองรับไทย)"""
+        """Stage 3: Processing"""
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string("Scanning...")
-                self.lcd.cursor_pos = (1, 0)
                 self.lcd.write_string("Processing")
+                self.lcd.cursor_pos = (1, 0)
+                self.lcd.write_string("")
             except Exception as e:
                 print(f"LCD display error: {e}")
     
     def lcd_show_results(self, bottle_count, cap_count, label_count, can_count):
-        """แสดงที่ตรวจจับได้"""
+        """Stage 4-5: Detected / Bottle / Can"""
         if self.lcd:
             try:
                 self.lcd.clear()
-                # แสดงจำนวน
-                self.lcd.write_string(f"B:{bottle_count} C:{can_count}")
+                self.lcd.write_string("Detected")
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string(f"Cap:{cap_count} L:{label_count}")
+                if bottle_count > 0 and can_count > 0:
+                    self.lcd.write_string("Bottle & Can")
+                elif bottle_count > 0:
+                    self.lcd.write_string(f"Bottle Cap:{cap_count} L:{label_count}"[:16])
+                elif can_count > 0:
+                    self.lcd.write_string(f"Can {can_count}")
+                else:
+                    self.lcd.write_string("Not Detected")
             except Exception as e:
                 print(f"LCD display error: {e}")
     
     def lcd_show_score(self, card_id, score):
-        """แสดงคะแนนรวมพร้อมเลขบัตร RFID"""
+        """Stage 6: Thank You / View Points"""
         if self.lcd:
             try:
                 self.lcd.clear()
-                self.lcd.write_string(f"RFID: {card_id}")
+                self.lcd.write_string("Thank You")
                 self.lcd.cursor_pos = (1, 0)
-                self.lcd.write_string(f"Total: {score} pts")
+                self.lcd.write_string("View Points")
             except Exception as e:
                 print(f"LCD display error: {e}")
 
