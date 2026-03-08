@@ -14,6 +14,7 @@ from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
 
 # Database config
 DB_CONFIG = {
@@ -1062,6 +1063,14 @@ def add_score():
         
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    """แสดง error จริงเมื่อเกิด 500 (เพื่อ debug)"""
+    import traceback
+    tb = traceback.format_exc()
+    return f'<pre style="white-space:pre-wrap;font-size:12px;">Internal Server Error\n\n{tb}</pre>', 500
 
 
 if __name__ == '__main__':
