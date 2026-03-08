@@ -13,6 +13,7 @@ import sys
 import subprocess
 import os
 import json
+import atexit
 import RPi.GPIO as GPIO
 from stepper_motor_controller import StepperMotorController
 
@@ -32,6 +33,18 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 API_URL = "https://pet-detect-ai-api.onrender.com"  # API
+
+
+def _silence_buzzer_on_exit():
+    """เมื่อโปรแกรมจบ ให้ Buzzer เงียบ (Active-LOW: HIGH=เงียบ)"""
+    try:
+        subprocess.run(['raspi-gpio', 'set', '17', 'op', 'dh'], timeout=2, capture_output=True)
+    except Exception:
+        pass
+
+
+atexit.register(_silence_buzzer_on_exit)
+
 
 class PETDetectSubprocess:
     def __init__(self, api_url=API_URL):
@@ -631,10 +644,13 @@ if __name__ == "__main__":
                 GPIO.output(self.buzzer_pin, GPIO.HIGH)
             except Exception:
                 pass
-            # Cleanup GPIO
+            # Cleanup GPIO เฉพาะ LED, Stepper - ไม่ cleanup ขา Buzzer เพื่อให้คง HIGH (เงียบ)
             try:
-                GPIO.cleanup()
-            except:
+                GPIO.cleanup(self.led_pin)
+                if self.stepper:
+                    GPIO.cleanup(self.stepper.step_pin)
+                    GPIO.cleanup(self.stepper.dir_pin)
+            except Exception:
                 pass
             
             print("Cleanup completed")
