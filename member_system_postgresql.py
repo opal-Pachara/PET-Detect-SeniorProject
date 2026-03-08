@@ -222,32 +222,53 @@ def index():
             cursor = connection.cursor()
         
         # ดึงข้อมูลสมาชิกทั้งหมดเรียงตามคะแนน รวมชื่อจาก member_names
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("""
-                SELECT 
-                    s.rfid_id,
-                    m.display_name,
-                    SUM(s.score) as total_score,
-                    COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                    MAX(s.scan_time) as last_scan
-                FROM scan_logs s
-                LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
-                GROUP BY s.rfid_id, m.display_name
-                ORDER BY total_score DESC, scan_count DESC
-            """)
-        else:
-            cursor.execute("""
-                SELECT 
-                    s.rfid_id,
-                    m.display_name,
-                    SUM(s.score) as total_score,
-                    COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                    MAX(s.scan_time) as last_scan
-                FROM scan_logs s
-                LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
-                GROUP BY s.rfid_id, m.display_name
-                ORDER BY total_score DESC, scan_count DESC
-            """)
+        try:
+            if isinstance(connection, psycopg2.extensions.connection):
+                cursor.execute("""
+                    SELECT 
+                        s.rfid_id,
+                        m.display_name,
+                        SUM(s.score) as total_score,
+                        COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                        MAX(s.scan_time) as last_scan
+                    FROM scan_logs s
+                    LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
+                    GROUP BY s.rfid_id, m.display_name
+                    ORDER BY total_score DESC, scan_count DESC
+                """)
+            else:
+                cursor.execute("""
+                    SELECT 
+                        s.rfid_id,
+                        m.display_name,
+                        SUM(s.score) as total_score,
+                        COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                        MAX(s.scan_time) as last_scan
+                    FROM scan_logs s
+                    LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
+                    GROUP BY s.rfid_id, m.display_name
+                    ORDER BY total_score DESC, scan_count DESC
+                """)
+        except Exception as e:
+            print(f"Member names query fallback: {e}")
+            if isinstance(connection, psycopg2.extensions.connection):
+                cursor.execute("""
+                    SELECT rfid_id, NULL as display_name, SUM(score) as total_score,
+                        COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                        MAX(scan_time) as last_scan
+                    FROM scan_logs
+                    GROUP BY rfid_id
+                    ORDER BY total_score DESC, scan_count DESC
+                """)
+            else:
+                cursor.execute("""
+                    SELECT rfid_id, NULL as display_name, SUM(score) as total_score,
+                        COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                        MAX(scan_time) as last_scan
+                    FROM scan_logs
+                    GROUP BY rfid_id
+                    ORDER BY total_score DESC, scan_count DESC
+                """)
         
         members = cursor.fetchall()
         
@@ -742,30 +763,51 @@ def manage_members():
             cursor = connection.cursor()
         
         # ดึงข้อมูลสมาชิกจาก scan_logs + member_names (ชื่อที่ Admin ตั้ง)
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("""
-                SELECT s.rfid_id,
-                       m.display_name,
-                       COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                       MAX(s.scan_time) as last_scan
-                FROM scan_logs s
-                LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
-                GROUP BY s.rfid_id, m.display_name
-                ORDER BY total_score DESC, scan_count DESC
-            """)
-        else:
-            cursor.execute("""
-                SELECT s.rfid_id,
-                       m.display_name,
-                       COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                       MAX(s.scan_time) as last_scan
-                FROM scan_logs s
-                LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
-                GROUP BY s.rfid_id, m.display_name
-                ORDER BY total_score DESC, scan_count DESC
-            """)
+        try:
+            if isinstance(connection, psycopg2.extensions.connection):
+                cursor.execute("""
+                    SELECT s.rfid_id, m.display_name,
+                           COALESCE(SUM(s.score), 0) as total_score,
+                           COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                           MAX(s.scan_time) as last_scan
+                    FROM scan_logs s
+                    LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
+                    GROUP BY s.rfid_id, m.display_name
+                    ORDER BY total_score DESC, scan_count DESC
+                """)
+            else:
+                cursor.execute("""
+                    SELECT s.rfid_id, m.display_name,
+                           COALESCE(SUM(s.score), 0) as total_score,
+                           COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                           MAX(s.scan_time) as last_scan
+                    FROM scan_logs s
+                    LEFT JOIN member_names m ON s.rfid_id = m.rfid_id
+                    GROUP BY s.rfid_id, m.display_name
+                    ORDER BY total_score DESC, scan_count DESC
+                """)
+        except Exception as e:
+            print(f"Manage members query fallback: {e}")
+            if isinstance(connection, psycopg2.extensions.connection):
+                cursor.execute("""
+                    SELECT s.rfid_id, NULL as display_name,
+                           COALESCE(SUM(s.score), 0) as total_score,
+                           COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                           MAX(s.scan_time) as last_scan
+                    FROM scan_logs s
+                    GROUP BY s.rfid_id
+                    ORDER BY total_score DESC, scan_count DESC
+                """)
+            else:
+                cursor.execute("""
+                    SELECT s.rfid_id, NULL as display_name,
+                           COALESCE(SUM(s.score), 0) as total_score,
+                           COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                           MAX(s.scan_time) as last_scan
+                    FROM scan_logs s
+                    GROUP BY s.rfid_id
+                    ORDER BY total_score DESC, scan_count DESC
+                """)
         
         members = cursor.fetchall()
         
@@ -920,25 +962,27 @@ def admin_edit_member_name():
         
         cursor = connection.cursor()
         
-        if display_name:
-            # Upsert: ถ้ามีอยู่แล้วให้อัปเดต ยังไม่มีให้เพิ่ม
-            if isinstance(connection, psycopg2.extensions.connection):
-                cursor.execute("""
-                    INSERT INTO member_names (rfid_id, display_name)
-                    VALUES (%s, %s)
-                    ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
-                """, (rfid_id, display_name))
+        try:
+            if display_name:
+                if isinstance(connection, psycopg2.extensions.connection):
+                    cursor.execute("""
+                        INSERT INTO member_names (rfid_id, display_name)
+                        VALUES (%s, %s)
+                        ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
+                    """, (rfid_id, display_name))
+                else:
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO member_names (rfid_id, display_name)
+                        VALUES (?, ?)
+                    """, (rfid_id, display_name))
             else:
-                cursor.execute("""
-                    INSERT OR REPLACE INTO member_names (rfid_id, display_name)
-                    VALUES (?, ?)
-                """, (rfid_id, display_name))
-        else:
-            # ลบชื่อออก กลับไปใช้แค่ RFID
-            if isinstance(connection, psycopg2.extensions.connection):
-                cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
-            else:
-                cursor.execute("DELETE FROM member_names WHERE rfid_id = ?", (rfid_id,))
+                if isinstance(connection, psycopg2.extensions.connection):
+                    cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
+                else:
+                    cursor.execute("DELETE FROM member_names WHERE rfid_id = ?", (rfid_id,))
+        except Exception as e:
+            connection.rollback()
+            return jsonify({'success': False, 'message': f'ตาราง member_names ยังไม่พร้อม: {str(e)}'})
         
         connection.commit()
         cursor.close()
@@ -970,10 +1014,16 @@ def admin_delete_member():
         # ลบข้อมูลจาก scan_logs และ member_names
         if isinstance(connection, psycopg2.extensions.connection):
             cursor.execute("DELETE FROM scan_logs WHERE rfid_id = %s", (rfid_id,))
-            cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
+            try:
+                cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
+            except Exception:
+                pass
         else:
             cursor.execute("DELETE FROM scan_logs WHERE rfid_id = ?", (rfid_id,))
-            cursor.execute("DELETE FROM member_names WHERE rfid_id = ?", (rfid_id,))
+            try:
+                cursor.execute("DELETE FROM member_names WHERE rfid_id = ?", (rfid_id,))
+            except Exception:
+                pass
         
         connection.commit()
         cursor.close()
