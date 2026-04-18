@@ -206,13 +206,8 @@ def index():
         # สร้าง display_label: "ชื่อ RFID" หรือแค่ rfid_id
         for m in members:
             dn = names_map.get(str(m.get('rfid_id', '')))
-            fixname = ''
-            if m['rfid_id'] == '718597286205':
-                fixname = 'น้องหมา'
-            else:
-                fixname = m['rfid_id']
             m['display_name'] = dn
-            m['display_label'] = f"{dn} {fixname}" if dn else m['rfid_id']
+            m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
         # ตรวจสอบข้อมูลที่ได้
         print(f"DEBUG: Found {len(members)} members")
