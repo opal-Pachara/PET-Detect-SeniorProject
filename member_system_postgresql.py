@@ -207,7 +207,7 @@ def index():
         for m in members:
             dn = names_map.get(str(m.get('rfid_id', '')))
             m['display_name'] = dn
-            m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
+            m['display_label'] = f"{dn} {dn}" if dn else dn
         
         # ตรวจสอบข้อมูลที่ได้
         print(f"DEBUG: Found {len(members)} members")
@@ -621,7 +621,7 @@ def manage_members():
                 dn = 'Peem'
 
             m['display_name'] = dn
-            m['display_label'] = f"{dn} {m['rfid_id']}" if dn else dn
+            m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
         connection.close()
         return render_template('admin_members.html', members=members)
