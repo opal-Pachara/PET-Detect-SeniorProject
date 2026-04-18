@@ -747,11 +747,10 @@ def admin_edit_member_name():
         display_name = None
 
         if target_rfid == "718597286205":
-            rfid_id = 'Opal'
-        if target_rfid == "1070128781870":
-            rfid_id = 'Peem'
-
-        
+            display_name = 'Opal'
+        elif target_rfid == "1070128781870":
+            display_name = 'Peem'
+                  
         try:
             if display_name:
                 cursor.execute("""
