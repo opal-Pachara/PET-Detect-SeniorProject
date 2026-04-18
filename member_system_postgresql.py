@@ -209,6 +209,8 @@ def index():
             fixname = ''
             if m['rfid_id'] == '718597286205':
                 fixname = 'น้องหมา'
+            else:
+                fixname = m['rfid_id']
             m['display_name'] = dn
             m['display_label'] = f"{dn} {fixname}" if dn else m['rfid_id']
         
