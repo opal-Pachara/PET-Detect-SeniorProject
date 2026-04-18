@@ -3,14 +3,13 @@
 member_system_postgresql.py - ระบบจัดการสมาชิก PET Detect
 
 - Flask Web Application สำหรับดูคะแนน สมาชิก และจัดการข้อมูล
-- ใช้ PostgreSQL บน Render (production) หรือ SQLite (fallback ท้องถิ่น)
+- ใช้ PostgreSQL เท่านั้น (เช่น Render หรือเซิร์ฟเวอร์ Postgres)
 - ตารางหลัก: scan_logs (ประวัติสแกน), admin_users (ผู้ดูแล), member_names (ชื่อสมาชิก)
 - API สำหรับ Pi client: /api/add_score (บันทึกคะแนนจากการสแกน)
 """
 
 import os
 import hashlib
-import sqlite3
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
@@ -35,24 +34,14 @@ print(f"Database Config: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dat
 
 # ==================== Database Connection & Init ====================
 def get_db_connection():
-    """สร้างการเชื่อมต่อฐานข้อมูล PostgreSQL เเละ SQLite fallback"""
+    """สร้างการเชื่อมต่อฐานข้อมูล PostgreSQL"""
     try:
-        # ลองเชื่อม PostgreSQL ก่อน
         connection = psycopg2.connect(**DB_CONFIG)
         print("Connected to PostgreSQL")
         return connection
     except psycopg2.Error as e:
         print(f"PostgreSQL connection failed: {e}")
-        try:
-            # Fallback to SQLite
-            connection = sqlite3.connect('pet_detect.db')
-            
-            connection.row_factory = sqlite3.Row
-            print("Connected to SQLite (fallback)")
-            return connection
-        except Exception as sqlite_error:
-            print(f"SQLite connection also failed: {sqlite_error}")
-            return None
+        return None
 
 
 def init_database():
@@ -63,68 +52,33 @@ def init_database():
             return False
         
         cursor = connection.cursor()
-        
-        # ตรวจสอบว่าเป็น PostgreSQL หรือ SQLite
-        if isinstance(connection, psycopg2.extensions.connection):
-            # PostgreSQL ตาราง scan_logs และ admin_users
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS scan_logs (
-                    id SERIAL PRIMARY KEY,
-                    rfid_id VARCHAR(50) NOT NULL,
-                    bottle_count INTEGER DEFAULT 0,
-                    can_count INTEGER DEFAULT 0,
-                    cap_count INTEGER DEFAULT 0,
-                    label_count INTEGER DEFAULT 0,
-                    score INTEGER DEFAULT 0,
-                    image_path VARCHAR(500),
-                    scan_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS admin_users (
-                    id SERIAL PRIMARY KEY,
-                    username VARCHAR(100) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS member_names (
-                    rfid_id VARCHAR(50) PRIMARY KEY,
-                    display_name VARCHAR(100) NOT NULL
-                )
-            """)
-        else:
-            # SQLite ตาราง scan_logs และ admin_users
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS scan_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    rfid_id TEXT NOT NULL,
-                    bottle_count INTEGER DEFAULT 0,
-                    can_count INTEGER DEFAULT 0,
-                    cap_count INTEGER DEFAULT 0,
-                    label_count INTEGER DEFAULT 0,
-                    score INTEGER DEFAULT 0,
-                    image_path TEXT,
-                    scan_time DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS admin_users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS member_names (
-                    rfid_id TEXT PRIMARY KEY,
-                    display_name TEXT NOT NULL
-                )
-            """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS scan_logs (
+                id SERIAL PRIMARY KEY,
+                rfid_id VARCHAR(50) NOT NULL,
+                bottle_count INTEGER DEFAULT 0,
+                can_count INTEGER DEFAULT 0,
+                cap_count INTEGER DEFAULT 0,
+                label_count INTEGER DEFAULT 0,
+                score INTEGER DEFAULT 0,
+                image_path VARCHAR(500),
+                scan_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS member_names (
+                rfid_id VARCHAR(50) PRIMARY KEY,
+                display_name VARCHAR(100) NOT NULL
+            )
+        """)
         
         connection.commit()
         cursor.close()
@@ -168,13 +122,8 @@ def create_admin_user():
         print("DEBUG: Database connection successful in create_admin_user")
         cursor = connection.cursor()
         
-        # ตรวจสอบว่ามี admin ไหม
-        if isinstance(connection, psycopg2.extensions.connection):
-            print("DEBUG: Checking admin user with PostgreSQL")
-            cursor.execute("SELECT id FROM admin_users WHERE username = 'admin'")
-        else:
-            print("DEBUG: Checking admin user with SQLite")
-            cursor.execute("SELECT id FROM admin_users WHERE username = 'admin'")
+        print("DEBUG: Checking admin user with PostgreSQL")
+        cursor.execute("SELECT id FROM admin_users WHERE username = 'admin'")
         
         admin_exists = cursor.fetchone()
         print(f"DEBUG: Admin exists: {admin_exists}")
@@ -184,16 +133,10 @@ def create_admin_user():
             admin_password = hash_password('admin123')
             print(f"DEBUG: Admin password hash: {admin_password}")
             
-            if isinstance(connection, psycopg2.extensions.connection):
-                cursor.execute("""
-                    INSERT INTO admin_users (username, password_hash)
-                    VALUES ('admin', %s)
-                """, (admin_password,))
-            else:
-                cursor.execute("""
-                    INSERT INTO admin_users (username, password_hash)
-                    VALUES ('admin', ?)
-                """, (admin_password,))
+            cursor.execute("""
+                INSERT INTO admin_users (username, password_hash)
+                VALUES ('admin', %s)
+            """, (admin_password,))
             
             print("DEBUG: Admin user created: admin / admin123")
         else:
@@ -225,31 +168,17 @@ def index():
             return jsonify({'error': 'Database connection failed'}), 500
         
         
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-        else:
-            
-            cursor = connection.cursor()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
         
         # ดึงข้อมูลสมาชิก (ไม่ใช้ JOIN เพื่อหลีกเลี่ยง error ตาราง member_names)
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("""
-                SELECT rfid_id, SUM(score) as total_score,
-                    COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                    MAX(scan_time) as last_scan
-                FROM scan_logs
-                GROUP BY rfid_id
-                ORDER BY total_score DESC, scan_count DESC
-            """)
-        else:
-            cursor.execute("""
-                SELECT rfid_id, SUM(score) as total_score,
-                    COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                    MAX(scan_time) as last_scan
-                FROM scan_logs
-                GROUP BY rfid_id
-                ORDER BY total_score DESC, scan_count DESC
-            """)
+        cursor.execute("""
+            SELECT rfid_id, SUM(score) as total_score,
+                COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                MAX(scan_time) as last_scan
+            FROM scan_logs
+            GROUP BY rfid_id
+            ORDER BY total_score DESC, scan_count DESC
+        """)
         
         members = cursor.fetchall()
         
@@ -264,10 +193,7 @@ def index():
         except Exception:
             pass
         
-        if isinstance(connection, sqlite3.Connection):
-            members = [dict(row) for row in members]
-        else:
-            members = [dict(row) for row in members]
+        members = [dict(row) for row in members]
         
         # สร้าง display_label: "ชื่อ RFID" หรือแค่ rfid_id
         for m in members:
@@ -286,24 +212,15 @@ def index():
         # สถิติรวม
         cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_members FROM scan_logs")
         total_members_row = cursor.fetchone()
-        if isinstance(connection, sqlite3.Connection):
-            total_members = total_members_row['total_members'] if total_members_row else 0
-        else:
-            total_members = total_members_row['total_members'] if total_members_row else 0
+        total_members = total_members_row['total_members'] if total_members_row else 0
         
         cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
         total_score_row = cursor.fetchone()
-        if isinstance(connection, sqlite3.Connection):
-            total_score = total_score_row['total_score'] if total_score_row else 0
-        else:
-            total_score = total_score_row['total_score'] if total_score_row else 0
+        total_score = total_score_row['total_score'] if total_score_row else 0
         
         cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
         total_scans_row = cursor.fetchone()
-        if isinstance(connection, sqlite3.Connection):
-            total_scans = total_scans_row['total_scans'] if total_scans_row else 0
-        else:
-            total_scans = total_scans_row['total_scans'] if total_scans_row else 0
+        total_scans = total_scans_row['total_scans'] if total_scans_row else 0
         
         cursor.close()
         connection.close()
@@ -339,6 +256,7 @@ def admin_login():
         flash('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน', 'error')
         return redirect(url_for('admin_login'))
     
+    connection = None
     try:
         print(f"DEBUG: Attempting login for username: {username}")
         connection = get_db_connection()
@@ -348,28 +266,16 @@ def admin_login():
             return redirect(url_for('admin_login'))
         
         print("DEBUG: Database connection successful")
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = connection.cursor()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
         
-        # ตรวจสอบผู้ใช้
-        if isinstance(connection, psycopg2.extensions.connection):
-            print("DEBUG: Using PostgreSQL query")
-            cursor.execute("SELECT id, username, password_hash FROM admin_users WHERE username = %s", (username,))
-        else:
-            print("DEBUG: Using SQLite query")
-            cursor.execute("SELECT id, username, password_hash FROM admin_users WHERE username = ?", (username,))
+        print("DEBUG: Using PostgreSQL query")
+        cursor.execute("SELECT id, username, password_hash FROM admin_users WHERE username = %s", (username,))
         
         user = cursor.fetchone()
         print(f"DEBUG: User found: {user}")
         
         if user:
-            # แปลง user เป็น dict
-            if isinstance(connection, sqlite3.Connection):
-                user_dict = dict(user)
-            else:
-                user_dict = user
+            user_dict = dict(user)
                 
             print(f"DEBUG: Verifying password for user: {user_dict['username']}")
             password_valid = verify_password(password, user_dict['password_hash'])
@@ -426,53 +332,32 @@ def debug_admin():
         if not connection:
             return jsonify({'error': 'Database connection failed'})
         
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = connection.cursor()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
         
-        # ตรวจสอบ admin
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("SELECT id, username, password_hash FROM admin_users WHERE username = 'admin'")
-        else:
-            cursor.execute("SELECT id, username, password_hash FROM admin_users WHERE username = 'admin'")
+        cursor.execute("SELECT id, username, password_hash FROM admin_users WHERE username = 'admin'")
         
         admin_user = cursor.fetchone()
         
-        # ตรวจสอบจำนวนสมาชิกทั้งหมด
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("SELECT COUNT(DISTINCT rfid_id) as count FROM scan_logs")
-        else:
-            cursor.execute("SELECT COUNT(DISTINCT rfid_id) as count FROM scan_logs")
+        cursor.execute("SELECT COUNT(DISTINCT rfid_id) as count FROM scan_logs")
         
         member_count = cursor.fetchone()
         
-        # ตรวจสอบ database type ก่อนปิดการเชื่อมต่อ
-        is_postgresql = isinstance(connection, psycopg2.extensions.connection)
-        
         connection.close()
         
-        # แปลงข้อมูลให้เหมาะกับ database type
         if admin_user:
-            if is_postgresql:
-                admin_user_dict = dict(admin_user)
-            else:
-                admin_user_dict = dict(admin_user)
+            admin_user_dict = dict(admin_user)
         else:
             admin_user_dict = None
             
         if member_count:
-            if is_postgresql:
-                count_value = member_count['count']
-            else:
-                count_value = member_count['count']
+            count_value = member_count['count']
         else:
             count_value = 0
         
         return jsonify({
             'admin_user': admin_user_dict,
             'member_count': count_value,
-            'database_type': 'PostgreSQL' if is_postgresql else 'SQLite'
+            'database_type': 'PostgreSQL'
         })
         
     except Exception as e:
@@ -490,11 +375,7 @@ def create_admin_api():
         
         cursor = connection.cursor()
         
-        # ตรวจสอบว่ามี admin ไหม
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("SELECT id FROM admin_users WHERE username = 'admin'")
-        else:
-            cursor.execute("SELECT id FROM admin_users WHERE username = 'admin'")
+        cursor.execute("SELECT id FROM admin_users WHERE username = 'admin'")
         
         admin_exists = cursor.fetchone()
         print(f"DEBUG: Admin exists: {admin_exists}")
@@ -504,16 +385,10 @@ def create_admin_api():
             admin_password = hash_password('admin123')
             print(f"DEBUG: Admin password hash: {admin_password}")
             
-            if isinstance(connection, psycopg2.extensions.connection):
-                cursor.execute("""
-                    INSERT INTO admin_users (username, password_hash)
-                    VALUES ('admin', %s)
-                """, (admin_password,))
-            else:
-                cursor.execute("""
-                    INSERT INTO admin_users (username, password_hash)
-                    VALUES ('admin', ?)
-                """, (admin_password,))
+            cursor.execute("""
+                INSERT INTO admin_users (username, password_hash)
+                VALUES ('admin', %s)
+            """, (admin_password,))
             
             connection.commit()
             print("DEBUG: Admin user created successfully")
@@ -539,24 +414,13 @@ def debug_data():
         if not connection:
             return jsonify({'error': 'Database connection failed'})
         
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = connection.cursor()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
         
-        # ตรวจสอบตารางที่มีอยู่
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-            """)
-        else:
-            cursor.execute("""
-                SELECT name as table_name 
-                FROM sqlite_master 
-                WHERE type='table'
-            """)
+        cursor.execute("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        """)
         
         tables = cursor.fetchall()
         
@@ -578,14 +442,8 @@ def debug_data():
         
         members_data = cursor.fetchall()
         
-        # แปลงข้อมูลสำหรับ SQLite และ PostgreSQL
-        if isinstance(connection, sqlite3.Connection):
-            members_data = [dict(row) for row in members_data]
-            tables = [dict(row) for row in tables]
-        else:
-            # PostgreSQL แปลงเป็น list
-            members_data = [dict(row) for row in members_data]
-            tables = [dict(table) for table in tables]
+        members_data = [dict(row) for row in members_data]
+        tables = [dict(table) for table in tables]
         
         # ประวัติการสแกนล่าสุด 10 ครั้ง
         cursor.execute("""
@@ -605,12 +463,7 @@ def debug_data():
         
         recent_scans = cursor.fetchall()
         
-        # แปลงข้อมูลสำหรับ SQLite
-        if isinstance(connection, sqlite3.Connection):
-            recent_scans = [dict(row) for row in recent_scans]
-        else:
-            # PostgreSQL return เป็น dict
-            recent_scans = [dict(scan) for scan in recent_scans]
+        recent_scans = [dict(scan) for scan in recent_scans]
         
         # สถิติรวม
         cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_users FROM scan_logs")
@@ -622,29 +475,17 @@ def debug_data():
         cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
         total_score_row = cursor.fetchone()
         
-        # แปลงข้อมูลสำหรับ SQLite
-        if isinstance(connection, sqlite3.Connection):
-            total_users = total_users_row['total_users'] if total_users_row else 0
-            total_scans = total_scans_row['total_scans'] if total_scans_row else 0
-            total_score = total_score_row['total_score'] if total_score_row else 0
-        else:
-            total_users = total_users_row['total_users'] if total_users_row else 0
-            total_scans = total_scans_row['total_scans'] if total_scans_row else 0
-            total_score = total_score_row['total_score'] if total_score_row else 0
+        total_users = total_users_row['total_users'] if total_users_row else 0
+        total_scans = total_scans_row['total_scans'] if total_scans_row else 0
+        total_score = total_score_row['total_score'] if total_score_row else 0
         
         # ข้อมูล admin users
         cursor.execute("SELECT username, created_at FROM admin_users")
         admin_users = cursor.fetchall()
         
-        # แปลงข้อมูลสำหรับ SQLite
-        if isinstance(connection, sqlite3.Connection):
-            admin_users = [dict(row) for row in admin_users]
-        else:
-            # PostgreSQL return เป็น dict
-            admin_users = [dict(user) for user in admin_users]
+        admin_users = [dict(user) for user in admin_users]
         
-        # ตรวจสอบ database type
-        database_type = "PostgreSQL" if isinstance(connection, psycopg2.extensions.connection) else "SQLite"
+        database_type = "PostgreSQL"
         
         connection.close()
         
@@ -680,56 +521,30 @@ def stats():
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
         
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = connection.cursor()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
         
         # สถิติสมาชิก (scan_logs)
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_members FROM scan_logs")
-            result = cursor.fetchone()
-            total_members = result['total_members'] if result else 0
-            
-            cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
-            result = cursor.fetchone()
-            total_scans = result['total_scans'] if result else 0
-            
-            cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
-            result = cursor.fetchone()
-            total_score = result['total_score'] if result else 0
-            
-            # ผู้ใช้งานจริง 30 วันล่าสุด 
-            cursor.execute("""
-                SELECT COUNT(DISTINCT rfid_id) as active_users 
-                FROM scan_logs 
-                WHERE scan_time >= NOW() - INTERVAL '30 days'
-                    AND image_path != 'ADMIN_ADJUSTMENT'
-            """)
-            result = cursor.fetchone()
-            active_users = result['active_users'] if result else 0
-        else:
-            cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_members FROM scan_logs")
-            result = cursor.fetchone()
-            total_members = result['total_members'] if result else 0
-            
-            cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
-            result = cursor.fetchone()
-            total_scans = result['total_scans'] if result else 0
-            
-            cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
-            result = cursor.fetchone()
-            total_score = result['total_score'] if result else 0
-            
-            
-            cursor.execute("""
-                SELECT COUNT(DISTINCT rfid_id) as active_users 
-                FROM scan_logs 
-                WHERE scan_time >= datetime('now', '-30 days')
-                    AND image_path != 'ADMIN_ADJUSTMENT'
-            """)
-            result = cursor.fetchone()
-            active_users = result['active_users'] if result else 0
+        cursor.execute("SELECT COUNT(DISTINCT rfid_id) as total_members FROM scan_logs")
+        result = cursor.fetchone()
+        total_members = result['total_members'] if result else 0
+        
+        cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
+        result = cursor.fetchone()
+        total_scans = result['total_scans'] if result else 0
+        
+        cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
+        result = cursor.fetchone()
+        total_score = result['total_score'] if result else 0
+        
+        # ผู้ใช้งานจริง 30 วันล่าสุด 
+        cursor.execute("""
+            SELECT COUNT(DISTINCT rfid_id) as active_users 
+            FROM scan_logs 
+            WHERE scan_time >= NOW() - INTERVAL '30 days'
+                AND image_path != 'ADMIN_ADJUSTMENT'
+        """)
+        result = cursor.fetchone()
+        active_users = result['active_users'] if result else 0
         
         stats_data = {
             'total_members': total_members or 0,
@@ -754,30 +569,17 @@ def manage_members():
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
         
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = connection.cursor()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
         
         # ดึงข้อมูลสมาชิก (ไม่ใช้ JOIN)
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("""
-                SELECT s.rfid_id, COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                       MAX(s.scan_time) as last_scan
-                FROM scan_logs s
-                GROUP BY s.rfid_id
-                ORDER BY total_score DESC, scan_count DESC
-            """)
-        else:
-            cursor.execute("""
-                SELECT s.rfid_id, COALESCE(SUM(s.score), 0) as total_score,
-                       COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                       MAX(s.scan_time) as last_scan
-                FROM scan_logs s
-                GROUP BY s.rfid_id
-                ORDER BY total_score DESC, scan_count DESC
-            """)
+        cursor.execute("""
+            SELECT s.rfid_id, COALESCE(SUM(s.score), 0) as total_score,
+                   COUNT(CASE WHEN s.image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
+                   MAX(s.scan_time) as last_scan
+            FROM scan_logs s
+            GROUP BY s.rfid_id
+            ORDER BY total_score DESC, scan_count DESC
+        """)
         
         members = cursor.fetchall()
         
@@ -792,11 +594,7 @@ def manage_members():
         except Exception:
             pass
         
-        # แปลงข้อมูลสำหรับ SQLite และสร้าง display_label (ชื่อ RFID)
-        if isinstance(connection, sqlite3.Connection):
-            members = [dict(member) for member in members]
-        else:
-            members = [dict(member) for member in members]
+        members = [dict(member) for member in members]
         
         for m in members:
             dn = names_map.get(str(m.get('rfid_id', '')))
@@ -818,34 +616,19 @@ def scan_history():
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
         
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = connection.cursor()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
         
-        # ดึงประวัติการสแกนทั้งหมด
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("""
-                SELECT s.*, s.rfid_id as full_name, s.rfid_id as username
-                FROM scan_logs s
-                WHERE s.image_path != 'ADMIN_ADJUSTMENT'
-                ORDER BY s.scan_time DESC
-                LIMIT 100
-            """)
-        else:
-            cursor.execute("""
-                SELECT s.*, s.rfid_id as full_name, s.rfid_id as username
-                FROM scan_logs s
-                WHERE s.image_path != 'ADMIN_ADJUSTMENT'
-                ORDER BY s.scan_time DESC
-                LIMIT 100
-            """)
+        cursor.execute("""
+            SELECT s.*, s.rfid_id as full_name, s.rfid_id as username
+            FROM scan_logs s
+            WHERE s.image_path != 'ADMIN_ADJUSTMENT'
+            ORDER BY s.scan_time DESC
+            LIMIT 100
+        """)
         
         scan_history = cursor.fetchall()
         
-        # แปลงข้อมูลรูปแบบวันที่
-        if isinstance(connection, sqlite3.Connection):
-            scan_history = [dict(scan) for scan in scan_history]
+        scan_history = [dict(scan) for scan in scan_history]
         
         # จัดรูปเป็น string
         for scan in scan_history:
@@ -890,32 +673,20 @@ def admin_edit_score():
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor = connection.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = connection.cursor()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
         
-        # คำนวณคะแนนที่ต้องปรับ
-        query = "SELECT SUM(score) as current_total FROM scan_logs WHERE rfid_id = %s" if isinstance(connection, psycopg2.extensions.connection) else "SELECT SUM(score) as current_total FROM scan_logs WHERE rfid_id = ?"
-        cursor.execute(query, (rfid_id,))
+        cursor.execute(
+            "SELECT SUM(score) as current_total FROM scan_logs WHERE rfid_id = %s",
+            (rfid_id,),
+        )
         result = cursor.fetchone()
-        if isinstance(connection, sqlite3.Connection):
-            current_total = result['current_total'] if result and result['current_total'] else 0
-        else:
-            current_total = result['current_total'] if result and result['current_total'] else 0
+        current_total = result['current_total'] if result and result['current_total'] else 0
         score_difference = new_score - current_total
         
-        # เพิ่ม record ใหม่เพื่อปรับคะแนน
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("""
-                INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (rfid_id, 0, 0, 0, 0, score_difference, 'ADMIN_ADJUSTMENT'))
-        else:
-            cursor.execute("""
-                INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (rfid_id, 0, 0, 0, 0, score_difference, 'ADMIN_ADJUSTMENT'))
+        cursor.execute("""
+            INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (rfid_id, 0, 0, 0, 0, score_difference, 'ADMIN_ADJUSTMENT'))
         
         connection.commit()
         cursor.close()
@@ -946,22 +717,13 @@ def admin_edit_member_name():
         
         try:
             if display_name:
-                if isinstance(connection, psycopg2.extensions.connection):
-                    cursor.execute("""
-                        INSERT INTO member_names (rfid_id, display_name)
-                        VALUES (%s, %s)
-                        ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
-                    """, (rfid_id, display_name))
-                else:
-                    cursor.execute("""
-                        INSERT OR REPLACE INTO member_names (rfid_id, display_name)
-                        VALUES (?, ?)
-                    """, (rfid_id, display_name))
+                cursor.execute("""
+                    INSERT INTO member_names (rfid_id, display_name)
+                    VALUES (%s, %s)
+                    ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
+                """, (rfid_id, display_name))
             else:
-                if isinstance(connection, psycopg2.extensions.connection):
-                    cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
-                else:
-                    cursor.execute("DELETE FROM member_names WHERE rfid_id = ?", (rfid_id,))
+                cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
         except Exception as e:
             connection.rollback()
             return jsonify({'success': False, 'message': f'ตาราง member_names ยังไม่พร้อม: {str(e)}'})
@@ -993,19 +755,11 @@ def admin_delete_member():
         
         cursor = connection.cursor()
         
-        # ลบข้อมูลจาก scan_logs และ member_names
-        if isinstance(connection, psycopg2.extensions.connection):
-            cursor.execute("DELETE FROM scan_logs WHERE rfid_id = %s", (rfid_id,))
-            try:
-                cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
-            except Exception:
-                pass
-        else:
-            cursor.execute("DELETE FROM scan_logs WHERE rfid_id = ?", (rfid_id,))
-            try:
-                cursor.execute("DELETE FROM member_names WHERE rfid_id = ?", (rfid_id,))
-            except Exception:
-                pass
+        cursor.execute("DELETE FROM scan_logs WHERE rfid_id = %s", (rfid_id,))
+        try:
+            cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
+        except Exception:
+            pass
         
         connection.commit()
         cursor.close()
@@ -1052,19 +806,10 @@ def add_score():
         
         cursor = connection.cursor()
         
-        # เพิ่มข้อมูลการสแกน
-        if isinstance(connection, sqlite3.Connection):
-            # SQLite
-            cursor.execute("""
-                INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
-        else:
-            # PostgreSQL
-            cursor.execute("""
-                INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
+        cursor.execute("""
+            INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
         
         connection.commit()
         cursor.close()
