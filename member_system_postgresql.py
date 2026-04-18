@@ -756,7 +756,7 @@ def admin_edit_member_name():
                     INSERT INTO member_names (rfid_id, display_name)
                     VALUES (%s, %s)
                     ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
-                """, (rfid_id , display_name))
+                """, (display_name , display_name))
 
             else:
                 cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
