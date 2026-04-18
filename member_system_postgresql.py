@@ -611,6 +611,15 @@ def manage_members():
         
         for m in members:
             dn = names_map.get(str(m.get('rfid_id', '')))
+
+            rfid_str = str(m.get('rfid_id', ''))
+
+            if rfid_str == "718597286205":
+                dn = 'Opal'
+
+            elif rfid_str == "1070128781870":
+                dn = 'Peem'
+
             m['display_name'] = dn
             m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
