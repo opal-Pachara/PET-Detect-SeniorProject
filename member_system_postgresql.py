@@ -744,12 +744,20 @@ def admin_edit_member_name():
         cursor = connection.cursor()
         
         try:
+            target_rfid = str(rfid_id)
+            display_name = None
+
+            if target_rfid == "718597286205":
+                display_name = 'Opal'
+            if target_rfid == "1070128781870":
+                display_name = 'Peem'
+                
             if display_name:
                 cursor.execute("""
                     INSERT INTO member_names (rfid_id, display_name)
                     VALUES (%s, %s)
                     ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
-                """, (rfid_id, display_name))
+                """, (rfid_id = '', display_name))
 
             else:
                 cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
