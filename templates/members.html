@@ -264,6 +264,7 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- รับค่าจาก def index ส่งค่ากลับมาที่นี้ -->
                     {% for member in members %}
                     <tr>
                         <td class="rank rank-{{ loop.index if loop.index <= 3 else 'other' }}">
@@ -275,6 +276,7 @@
                         <td class="score">{{ member.total_score }}</td>
                         <td style="text-align: center;">{{ member.scan_count }}</td>
                     </tr>
+                    <!-- {{1 }} -->
                     {% endfor %}
                 </tbody>
             </table>

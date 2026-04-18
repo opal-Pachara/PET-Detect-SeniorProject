@@ -483,7 +483,7 @@ if __name__ == "__main__":
                         'https://pet-detect-seniorproject-1.onrender.com/api/add_score',  
                         json=score_data,
                         headers={'Content-Type': 'application/json'},
-                        timeout=30
+                        timeout=15
                     )
                     
                     if web_response.status_code == 200:

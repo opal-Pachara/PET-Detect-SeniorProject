@@ -1,0 +1,316 @@
+PET Detect Senior Project
+คู่มือเริ่มโปรเจกต์บน Render (ไม่ใช้ Docker) + Flow การทำงาน + วิธีเช็ค Error
+
+=====================================================================
+1) ภาพรวมระบบ
+=====================================================================
+ระบบนี้มี 3 ส่วนหลัก:
+1. Raspberry Pi Client (pi_client_subprocess.py)
+   - อ่าน RFID, ถ่ายรูป, ส่งรูปไป AI API, รับผลกลับ, ส่งคะแนนไป Member System
+2. AI API Service (minimal_api_cloud.py)
+   - รับรูปจาก Pi ผ่าน /api/scan แล้ววิเคราะห์ด้วย YOLO
+3. Member System Service (member_system_postgresql.py)
+   - รับคะแนนผ่าน /api/add_score และบันทึกฐานข้อมูล PostgreSQL
+   - มีหน้าเว็บสำหรับดูสถิติ/ประวัติ/จัดการสมาชิก
+
+หมายเหตุ: คู่มือนี้ใช้ Render ทั้ง AI API + Member System และไม่ใช้ Docker
+
+=====================================================================
+2) โครงสร้างไฟล์ที่เกี่ยวข้อง
+=====================================================================
+- minimal_api_cloud.py              -> AI API (endpoint: /api/scan)
+- member_system_postgresql.py       -> Web + API คะแนน (endpoint: /api/add_score)
+- pi_client_subprocess.py           -> Pi client หลัก
+- stepper_motor_controller.py       -> ควบคุม Stepper
+- requirements.txt                  -> dependency สำหรับ member system
+- requirements_minimal.txt          -> dependency สำหรับ AI API
+- Procfile                          -> start command ของ member system
+
+=====================================================================
+3) ขั้นตอนเตรียมก่อนขึ้น Render
+=====================================================================
+1. เตรียม GitHub repository ให้มีไฟล์ล่าสุด
+2. ตรวจชื่อไฟล์โมเดล:
+   - AI API คาดหวัง model ที่ path: model-yolov11/best.pt
+3. ตรวจ URL ที่ Pi ใช้เรียก service:
+   - pi_client_subprocess.py ใช้ API_URL สำหรับ /api/scan
+   - save_score_to_web() ใช้ URL member system สำหรับ /api/add_score
+4. แนะนำให้ตั้งค่า SECRET_KEY ที่ปลอดภัยใน Render env
+
+=====================================================================
+4) Deploy Member System บน Render (ไม่ใช้ Docker)
+=====================================================================
+4.1 สร้าง PostgreSQL บน Render
+1. Render Dashboard -> New + -> PostgreSQL
+2. ตั้งชื่อ DB เช่น pet-detect-db
+3. เลือก plan ที่ต้องการ
+4. หลังสร้างเสร็จ ให้คัดลอกค่า:
+   - Host
+   - Port
+   - Database
+   - User
+   - Password
+
+4.2 สร้าง Web Service สำหรับ Member System
+1. Render Dashboard -> New + -> Web Service
+2. Connect GitHub repo นี้
+3. ตั้งค่าดังนี้:
+   - Runtime: Python
+   - Build Command:
+     pip install -r requirements.txt
+   - Start Command:
+     gunicorn member_system_postgresql:app --bind 0.0.0.0:$PORT
+4. Environment Variables (สำคัญ):
+   - DB_HOST=<postgres-host>
+   - DB_PORT=<postgres-port-usually-5432>
+   - DB_NAME=<postgres-dbname>
+   - DB_USER=<postgres-user>
+   - DB_PASSWORD=<postgres-password>
+   - SECRET_KEY=<random-long-secret>
+   - PORT=10000 (Render มักกำหนดให้เอง แต่ใส่ได้)
+5. Deploy แล้วดู logs ว่ามีข้อความประมาณ:
+   - Database tables created successfully!
+   - Database พร้อม
+
+4.3 URL ที่ต้องได้หลัง deploy
+- https://<member-service>.onrender.com/
+- https://<member-service>.onrender.com/api/add_score
+
+=====================================================================
+5) Deploy AI API บน Render (ไม่ใช้ Docker)
+=====================================================================
+5.1 สร้าง Web Service สำหรับ AI API
+1. Render Dashboard -> New + -> Web Service
+2. ใช้ repo เดียวกันได้ แต่เป็นคนละ service
+3. ตั้งค่าดังนี้:
+   - Runtime: Python
+   - Build Command:
+     pip install -r requirements_minimal.txt
+   - Start Command:
+     gunicorn minimal_api_cloud:app --bind 0.0.0.0:$PORT
+4. Verify ว่าไฟล์ model-yolov11/best.pt อยู่ใน repo branch ที่ deploy
+
+5.2 URL ที่ต้องได้หลัง deploy
+- https://<ai-service>.onrender.com/
+- https://<ai-service>.onrender.com/api/scan
+
+=====================================================================
+6) ตั้งค่า Raspberry Pi ให้ชี้ URL จริงของ Render
+=====================================================================
+แก้ใน pi_client_subprocess.py
+
+1) ตัวแปร AI URL:
+- API_URL = "https://<ai-service>.onrender.com"
+
+2) ใน save_score_to_web() แก้ URL:
+- https://<member-service>.onrender.com/api/add_score
+
+หลังแก้แล้ว restart script บน Pi:
+- python3 pi_client_subprocess.py
+
+=====================================================================
+7) Flow การรับ-ส่งข้อมูลและภาพ (ละเอียด)
+=====================================================================
+Step A: เริ่มรอบสแกนที่ Pi
+1. Pi รอ RFID (read_rfid_subprocess)
+2. ได้ card_id แล้วแสดงผล LCD + beep + LED
+
+Step B: Pi ถ่ายภาพ
+1. open_camera()
+2. capture_image() -> บันทึก captured_image.jpg
+3. close_camera()
+
+Step C: Pi ส่งรูปไป AI API
+1. send_image_to_api(image_path)
+2. ส่งแบบ multipart/form-data:
+   - key: image
+   - value: captured_image.jpg (binary)
+3. endpoint ที่รับ: POST /api/scan (minimal_api_cloud.py)
+
+Step D: AI API วิเคราะห์และตอบกลับ
+1. scan() รับ request.files['image']
+2. เปิดรูปด้วย PIL -> แปลง numpy
+3. รัน YOLO model(image_array)
+4. นับ Bottle / Can / Cap / Label
+5. ส่ง JSON กลับ Pi เช่น:
+   {
+     "success": true,
+     "bottle_count": 1,
+     "can_count": 0,
+     "cap_count": 1,
+     "label_count": 0,
+     "score": 40,
+     "debug_info": {...}
+   }
+
+Step E: Pi เอาผลไปใช้งานต่อ
+1. process_scan_result()
+   - คำนวณคะแนน
+   - แสดงผล LCD
+2. control_stepper()
+   - หมุนซ้าย/ขวาตามผลตรวจจับ
+
+Step F: Pi ส่งคะแนนไป Member System
+1. save_score_to_web(card_id, result)
+2. ส่ง JSON ไป POST /api/add_score:
+   {
+     "card_id": "...",
+     "bottle_count": ...,
+     "can_count": ...,
+     "cap_count": ...,
+     "label_count": ...,
+     "score": ...,
+     "image_path": "captured_image.jpg"
+   }
+3. Member System route add_score() รับ JSON แล้ว INSERT ลง scan_logs
+
+Step G: แสดงผลหน้าเว็บ
+1. หน้า / ดึงคะแนนรวมจาก scan_logs
+2. /scan_history แสดงประวัติ
+3. /stats แสดงสถิติ
+
+หมายเหตุสำคัญเรื่องภาพ:
+- ตอนนี้ Member System ไม่ได้รับไฟล์ภาพจริงจาก Pi
+- ส่งแค่ข้อความ image_path="captured_image.jpg" เพื่อเก็บเป็น reference
+
+=====================================================================
+8) วิธีเทสด้วย Postman (ทีละ service)
+=====================================================================
+8.1 เทส AI API /api/scan
+Method: POST
+URL: https://<ai-service>.onrender.com/api/scan
+Body: form-data
+- key: image (type = File)
+- value: เลือกรูป .jpg
+
+Expected:
+- Status 200
+- JSON มี success, bottle_count, can_count, cap_count, label_count
+
+กรณีผิดพลาดที่พบบ่อย:
+- 400 No image uploaded: ลืมใส่ key image หรือเลือก type ไม่ใช่ File
+- 500 Model not loaded: model path ไม่ถูกหรือโหลด model ไม่สำเร็จ
+
+8.2 เทส Member API /api/add_score
+Method: POST
+URL: https://<member-service>.onrender.com/api/add_score
+Headers:
+- Content-Type: application/json
+Body (raw JSON):
+{
+  "card_id": "123456789",
+  "bottle_count": 1,
+  "can_count": 1,
+  "cap_count": 0,
+  "label_count": 0,
+  "image_path": "captured_image.jpg"
+}
+
+Expected:
+- Status 200
+- {"success": true, "message": "..."}
+
+กรณีผิดพลาดที่พบบ่อย:
+- ไม่ส่ง card_id -> success false / message ไม่พบ RFID ID
+- DB env ไม่ครบ -> เชื่อม DB ไม่ได้
+
+8.3 เทสหน้าเว็บ
+Method: GET
+URL:
+- https://<member-service>.onrender.com/
+- https://<member-service>.onrender.com/stats
+- https://<member-service>.onrender.com/scan_history
+
+=====================================================================
+9) วิธีเช็ค Error ผ่าน Render Logs (ใช้งานจริง)
+=====================================================================
+9.1 เข้า logs ของแต่ละ service
+1. Render Dashboard -> เลือก service
+2. เปิดแท็บ Logs
+3. กด Manual Deploy แล้วดู log ตั้งแต่ build ถึง runtime
+
+9.2 แยกดูตามปัญหา
+A) AI API มีปัญหา
+ดูคำค้นใน log:
+- Failed to load custom model
+- Model not loaded
+- Error processing image
+- ModuleNotFoundError
+
+แนวทางแก้:
+- ตรวจ requirements_minimal.txt
+- ตรวจ path model-yolov11/best.pt
+- ตรวจ memory ของ plan (ถ้า model ใหญ่เกิน)
+
+B) Member System มีปัญหา
+ดูคำค้นใน log:
+- PostgreSQL connection failed
+- SQLite connection also failed
+- Database initialization error
+- Internal Server Error
+
+แนวทางแก้:
+- ตรวจ env DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD
+- ตรวจว่า PostgreSQL service status เป็น Available
+- ลอง redeploy หลังแก้ env
+
+C) ปัญหา timeout / cold start
+อาการ:
+- Request แรกช้า
+- Pi timeout เมื่อยิง API
+แนวทางแก้:
+- เพิ่ม timeout ฝั่ง Pi
+- เรียก warmup endpoint ล่วงหน้า (เช่น GET /)
+- ตรวจ plan และทรัพยากรบน Render
+
+=====================================================================
+10) Debug แบบ End-to-End (จาก Pi ถึง DB)
+=====================================================================
+Checklist:
+1. บน Pi:
+   - ยืนยันอ่าน RFID ได้
+   - ยืนยัน capture_image() สร้างไฟล์ได้
+2. จาก Pi ยิง AI:
+   - ดู console ว่ามี API Response
+3. จาก Pi ยิง Member:
+   - ดูข้อความ "บันทึกคะแนนสำเร็จ"
+4. บน Render:
+   - AI logs มี request เข้า /api/scan
+   - Member logs มี request เข้า /api/add_score
+5. เปิดหน้าเว็บ /scan_history:
+   - มี row ใหม่ตาม card_id ที่เพิ่งสแกน
+
+ถ้า Step 2 ผ่านแต่ Step 3 ไม่ผ่าน:
+- ปัญหาอยู่ที่ URL member หรือ DB
+
+ถ้า Step 2 ไม่ผ่าน:
+- ปัญหาอยู่ที่ URL AI, model, หรือรูปที่ส่ง
+
+=====================================================================
+11) Postman Error Matrix (เร็ว)
+=====================================================================
+1) /api/scan ตอบ 400:
+- ตรวจ Body ต้องเป็น form-data + key image
+
+2) /api/scan ตอบ 500:
+- ดู AI logs เรื่อง model load / processing
+
+3) /api/add_score ตอบ success=false:
+- ตรวจ card_id และ JSON field หลัก
+
+4) /api/add_score timeout:
+- ดู member service runtime log + DB connection log
+
+5) Pi บอก save score fail แต่ Postman ผ่าน:
+- ตรวจ URL ใน pi_client_subprocess.py ว่าตรงกับ production URL จริง
+
+=====================================================================
+12) คำแนะนำการใช้งานจริง
+=====================================================================
+1. แยก Render service ชัดเจน: AI กับ Member คนละ service
+2. เก็บ URL ทั้งสองไว้ใน config เดียว (ลด hardcode)
+3. ตั้ง retries และ timeout ฝั่ง Pi ให้เหมาะกับ network จริง
+4. เปิด log level INFO ทั้ง Pi และ service เพื่อ trace ง่าย
+5. backup DB เป็นระยะ และจำกัดสิทธิ์ admin account
+
+จบคู่มือ

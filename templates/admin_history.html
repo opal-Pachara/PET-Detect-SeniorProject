@@ -87,6 +87,9 @@
                         <div>
                             <h6 class="mb-1">
                                 {{ scan.rfid_id }}
+
+                                <!-- {{ scan.scan_time }} หลังจากแปลงข้อมูลจากตัวเลขเป็น str แล้วมาแสดงผลตรงนี้ -->
+                                
                                 <span class="time-badge">{{ scan.scan_time if scan.scan_time else '-' }}</span>
                             </h6>
                         </div>

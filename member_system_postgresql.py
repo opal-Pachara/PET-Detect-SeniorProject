@@ -225,7 +225,7 @@ def index():
         cursor.execute("SELECT COALESCE(SUM(score), 0) as total_score FROM scan_logs")
         total_score_row = cursor.fetchone()
         total_score = total_score_row['total_score'] if total_score_row else 0
-        
+        # เช็คเงื่อนไขว่ามีการแสกนหรือไม่ ถ้ามีให้ส่งตัวเลขกลับถ้าไม่มีให้ส่ง 0 กลับไป
         cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
         total_scans_row = cursor.fetchone()
         total_scans = total_scans_row['total_scans'] if total_scans_row else 0
@@ -713,6 +713,8 @@ def admin_edit_score():
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
 
+
+
 @app.route('/api/admin/edit-member-name', methods=['POST'])
 @login_required
 def admin_edit_member_name():
@@ -720,12 +722,13 @@ def admin_edit_member_name():
     try:
         data = request.get_json()
         rfid_id = data.get('rfid_id')
-        display_name = (data.get('display_name') or '').strip()
+        display_name = (data.get('display_name') or '').strip() # .strip() ตัดช่องว่างทิ้งออก ของ String
         
         if not rfid_id:
             return jsonify({'success': False, 'message': 'ไม่พบ RFID ID'})
         
         connection = get_db_connection()
+
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
@@ -763,7 +766,7 @@ def admin_delete_member():
     try:
         data = request.get_json()
         rfid_id = data.get('rfid_id')
-        
+
         if not rfid_id:
             return jsonify({'success': False, 'message': 'ไม่พบ RFID ID'})
         
