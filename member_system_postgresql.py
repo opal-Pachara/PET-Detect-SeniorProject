@@ -621,7 +621,7 @@ def manage_members():
                 dn = 'Peem'
 
             m['display_name'] = dn
-            m['display_label'] = f"{dn} {dn}" if dn else m['rfid_id']
+            m['display_label'] = f"{dn} {m['rfid_id']}" if dn else dn
         
         connection.close()
         return render_template('admin_members.html', members=members)
@@ -747,7 +747,7 @@ def admin_edit_member_name():
 
         if target_rfid == "718597286205":
             display_name = 'Opal'
-        if target_rfid == "1070128781870":
+        elif target_rfid == "1070128781870":
             display_name = 'Peem'
 
         try:
