@@ -662,14 +662,14 @@ def scan_history():
 
                         else:
                             dt = datetime.strptime(scan['scan_time'], '%Y-%m-%d %H:%M:%S')
-                        scan['scan_time'] = dt.strftime('%Y/%m/%d %H:%M')
+                        scan['scan_time'] = dt.strftime('%d/%m/%Y %H:%M')
                         
                     except:
                         scan['scan_time'] = str(scan['scan_time'])
 
                 else:
                     # ถ้าเป็น datetime object
-                    scan['scan_time'] = scan['scan_time'].strftime('%Y/%m/%d %H:%M')
+                    scan['scan_time'] = scan['scan_time'].strftime('%d/%m/%Y %H:%M')
         
         connection.close()
         return render_template('admin_history.html', scan_history=scan_history)

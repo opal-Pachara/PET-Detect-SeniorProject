@@ -48,8 +48,6 @@ class StepperMotorController:
                 logger.warning(f"GPIO pin {pin} setup warning: {e}")
         
     
-    
-    
     def set_direction(self, clockwise=True):
         """ตั้งค่าการหมุน"""
         GPIO.output(self.dir_pin, GPIO.HIGH if clockwise else GPIO.LOW)
