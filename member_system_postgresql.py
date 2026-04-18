@@ -742,16 +742,17 @@ def admin_edit_member_name():
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
         cursor = connection.cursor()
+
+        target_rfid = str(rfid_id)
+        display_name = None
+
+        if target_rfid == "718597286205":
+            rfid_id = 'Opal'
+        if target_rfid == "1070128781870":
+            rfid_id = 'Peem'
+
         
         try:
-            target_rfid = str(rfid_id)
-            display_name = None
-
-            if target_rfid == "718597286205":
-                rfid_id = 'Opal'
-            if target_rfid == "1070128781870":
-                rfid_id = 'Peem'
-
             if display_name:
                 cursor.execute("""
                     INSERT INTO member_names (rfid_id, display_name)
