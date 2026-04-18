@@ -39,6 +39,7 @@ def get_db_connection():
         connection = psycopg2.connect(**DB_CONFIG)
         print("Connected to PostgreSQL")
         return connection
+    
     except psycopg2.Error as e:
         print(f"PostgreSQL connection failed: {e}")
         return None
@@ -48,10 +49,12 @@ def init_database():
     """สร้างตารางถ้ายังไม่มี"""
     try:
         connection = get_db_connection()
+        # ถ้าเชื่อมต่อเข้า Database ไม่ได้จะส่งค่าคืน
         if not connection:
             return False
         
         cursor = connection.cursor()
+# สร้่างตาราง database
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS scan_logs (
                 id SERIAL PRIMARY KEY,
@@ -83,7 +86,7 @@ def init_database():
         connection.commit()
         cursor.close()
         connection.close()
-        
+        # หลังจากสร้างตารางเสร็จแล้ว ให้ส่ง Boolean True กลับไปเพ
         print("Database tables created successfully!")
         return True
         
@@ -102,11 +105,11 @@ def verify_password(password, hashed):
 
 def login_required(f):
     """decorator ตรวจสอบว่าล็อกอินแล้ว ถ้ายัง redirect ไปหน้า login"""
-    @wraps(f)
+    @wraps(f) #คำสั่ง @waprs ทำหน้าที่ยืนยันฟังก์ชั่น
     def decorated_function(*args, **kwargs):
         if not session.get('admin_logged_in'):
             flash('กรุณาล็อกอินก่อนเข้าสู่ระบบ', 'warning')
-            return redirect(url_for('admin_login'))
+            return redirect(url_for('admin_login')) #url_for คือการสร้าง URL แบบไดนามิก
         return f(*args, **kwargs)
     return decorated_function
 
@@ -128,11 +131,12 @@ def create_admin_user():
         admin_exists = cursor.fetchone()
         print(f"DEBUG: Admin exists: {admin_exists}")
         
+        # เงื่อนไขเช็คว่ามี admin แล้วหรือยังหากยังไม่มี ให้สร้าง admin -ขึ้นมาใหม่ หากมีแล้วให้ print ว่ามีแล้ว
         if not admin_exists:
             # สร้าง admin
             admin_password = hash_password('admin123')
             print(f"DEBUG: Admin password hash: {admin_password}")
-            
+            # เพิ่มข้อมูล admin ที่ยังไม่มีไปยัง ตาราง admin_users
             cursor.execute("""
                 INSERT INTO admin_users (username, password_hash)
                 VALUES ('admin', %s)
@@ -164,9 +168,10 @@ def index():
         init_database()
         
         connection = get_db_connection()
+
+        # ส่งค่ากลับเป็น json 
         if not connection:
             return jsonify({'error': 'Database connection failed'}), 500
-        
         
         cursor = connection.cursor(cursor_factory=RealDictCursor)
         
@@ -180,6 +185,7 @@ def index():
             ORDER BY total_score DESC, scan_count DESC
         """)
         
+        # ดึงข้อมูลทั้งหมดมาโชว์
         members = cursor.fetchall()
         
         # ดึงชื่อจาก member_names แยก (ถ้ามีตาราง)
@@ -187,8 +193,10 @@ def index():
         try:
             cursor.execute("SELECT rfid_id, display_name FROM member_names")
             for row in cursor.fetchall():
+                # คำสั่ง d คือการแปลง row เป็น dict โดยตรวจสอบว่ามี method keys หรือไม่ 
                 d = dict(row) if hasattr(row, 'keys') else {'rfid_id': row[0], 'display_name': row[1] if len(row) > 1 else None}
                 if d.get('rfid_id'):
+                    # แปลงเลขเป็น string
                     names_map[str(d['rfid_id'])] = d.get('display_name')
         except Exception:
             pass
@@ -224,7 +232,8 @@ def index():
         
         cursor.close()
         connection.close()
-        
+
+        # Render กลับไปยัง HTML
         return render_template('members.html', 
                              members=members, 
                              total_members=total_members,
@@ -253,6 +262,7 @@ def admin_login():
     password = request.form.get('password')
     
     if not username or not password:
+        # laert กลับไปยังหน้า login ว่าข้อมูลไม่ครบถ้วน
         flash('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน', 'error')
         return redirect(url_for('admin_login'))
     
@@ -301,14 +311,15 @@ def admin_login():
         print(f"DEBUG: PostgreSQL error: {e}")
         flash('เกิดข้อผิดพลาดในการเข้าสู่ระบบ', 'error')
         return redirect(url_for('admin_login'))
+    
     except Exception as e:
         print(f"DEBUG: General error: {e}")
         flash('เกิดข้อผิดพลาดในการเข้าสู่ระบบ', 'error')
         return redirect(url_for('admin_login'))
+    
     finally:
         if connection:
             connection.close()
-
 
 @app.route('/admin', methods=['GET'])
 @login_required
@@ -331,7 +342,7 @@ def debug_admin():
         connection = get_db_connection()
         if not connection:
             return jsonify({'error': 'Database connection failed'})
-        
+        # cursor_factory = RealDictCursor ทำให้ผลลัพธ์ที่ได้เป็น dict แทนที่จะเป็น tuple
         cursor = connection.cursor(cursor_factory=RealDictCursor)
         
         cursor.execute("SELECT id, username, password_hash FROM admin_users WHERE username = 'admin'")
@@ -370,6 +381,7 @@ def create_admin_api():
     try:
         print("DEBUG: Creating admin user via API...")
         connection = get_db_connection()
+
         if not connection:
             return jsonify({'error': 'Database connection failed'})
         
@@ -395,6 +407,7 @@ def create_admin_api():
             cursor.close()
             connection.close()
             return jsonify({'success': True, 'message': 'Admin user created successfully'})
+        
         else:
             print("DEBUG: Admin user already exists")
             cursor.close()
@@ -636,16 +649,19 @@ def scan_history():
                 if isinstance(scan['scan_time'], str):
                     # ถ้าเป็น string แล้ว ให้แปลงเป็น datetime
                     try:
+                        # ใช้ ไลบรารี่ datetime ในการแปลง string เป็น datetime โดยรองรับรูปแบบทั่วไป
                         from datetime import datetime
+                        # ถ้าเจอ ตัว T ใหญ่ ใน scan_time แสดงว่าเป็นรูปแบบ ให้แปลงแบบ
                         if 'T' in scan['scan_time']:
-                            
                             dt = datetime.fromisoformat(scan['scan_time'].replace('Z', '+00:00'))
+
                         else:
-                            
                             dt = datetime.strptime(scan['scan_time'], '%Y-%m-%d %H:%M:%S')
                         scan['scan_time'] = dt.strftime('%d/%m/%Y %H:%M')
+                        
                     except:
                         scan['scan_time'] = str(scan['scan_time'])
+
                 else:
                     # ถ้าเป็น datetime object
                     scan['scan_time'] = scan['scan_time'].strftime('%d/%m/%Y %H:%M')
@@ -722,8 +738,10 @@ def admin_edit_member_name():
                     VALUES (%s, %s)
                     ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
                 """, (rfid_id, display_name))
+
             else:
                 cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
+
         except Exception as e:
             connection.rollback()
             return jsonify({'success': False, 'message': f'ตาราง member_names ยังไม่พร้อม: {str(e)}'})
@@ -750,6 +768,7 @@ def admin_delete_member():
             return jsonify({'success': False, 'message': 'ไม่พบ RFID ID'})
         
         connection = get_db_connection()
+
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
@@ -757,6 +776,7 @@ def admin_delete_member():
         
         cursor.execute("DELETE FROM scan_logs WHERE rfid_id = %s", (rfid_id,))
         try:
+            # ลบรายชื้ออกจากตาราง member_names
             cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
         except Exception:
             pass
@@ -769,6 +789,10 @@ def admin_delete_member():
         
     except Exception as e:
         return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+
+def sum_score(bottle_count, can_count, cap_count ,label_count):
+    score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
+    return score
 
 # ==================== API Pi Client (รับคะแนนจากการสแกน) ====================
 @app.route('/api/add_score', methods=['POST'])
@@ -795,17 +819,18 @@ def add_score():
         image_path = data.get('image_path', '')
         
         # คำนวณคะแนน: ขวด+50 กระป๋อง+100 แก๊ป-10 ฉลาก-10
-        score = (bottle_count * 50) + (can_count * 100) - (cap_count * 10) - (label_count * 10)
+        score = sum_score(bottle_count, can_count, cap_count ,label_count)
         
         if not rfid_id:
             return jsonify({'success': False, 'message': 'ไม่พบ RFID ID'})
         
         connection = get_db_connection()
+
         if not connection:
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
         cursor = connection.cursor()
-        
+        # ใส่ข้อมูลไปยังฐานข้อมูล โดยแยกคอลัมน์สำหรับ bottle_count, can_count, cap_count, label_count เพื่อให้สามารถคำนวณคะแนนได้ง่ายขึ้นในภายหลัง
         cursor.execute("""
             INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -842,4 +867,3 @@ if __name__ == '__main__':
     else:
         print("Database initialization failed")
         print("Please check PostgreSQL server and configuration")
-
