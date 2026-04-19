@@ -616,6 +616,15 @@ def manage_members():
         
         for m in members:
             dn = names_map.get(str(m.get('rfid_id', '')))
+
+            rfid_str = str(m.get('rfid_id', ''))
+
+            if rfid_str == "718597286205":
+                dn = 'Opal'
+
+            elif rfid_str == "1070128781870":
+                dn = 'Peem'
+
             m['display_name'] = dn
             m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
@@ -738,14 +747,21 @@ def admin_edit_member_name():
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
         cursor = connection.cursor()
-        
+
+        target_rfid = str(rfid_id)
+
+        if target_rfid == "718597286205":
+            display_name = 'Opal'
+        elif target_rfid == "1070128781870":
+            display_name = 'Peem'
+
         try:
             if display_name:
                 cursor.execute("""
                     INSERT INTO member_names (rfid_id, display_name)
                     VALUES (%s, %s)
                     ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
-                """, (rfid_id, display_name))
+                """, (display_name , display_name))
 
             else:
                 cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
