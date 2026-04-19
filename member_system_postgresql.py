@@ -203,11 +203,15 @@ def index():
         
         members = [dict(row) for row in members]
         
+        count = 0
         # สร้าง display_label: "ชื่อ RFID" หรือแค่ rfid_id
         for m in members:
             dn = names_map.get(str(m.get('rfid_id', '')))
             m['display_name'] = dn
             m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
+            count+=1
+            if count == 2:
+                break
         
         # ตรวจสอบข้อมูลที่ได้
         print(f"DEBUG: Found {len(members)} members")
