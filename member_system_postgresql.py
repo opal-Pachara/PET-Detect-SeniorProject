@@ -191,12 +191,8 @@ def index():
         # ดึงชื่อจาก member_names แยก (ถ้ามีตาราง)
         names_map = {}
         try:
-            count = 0;
             cursor.execute("SELECT rfid_id, display_name FROM member_names")
             for row in cursor.fetchall():
-                if count == 2:
-                    break
-                count+=1
                 # คำสั่ง d คือการแปลง row เป็น dict โดยตรวจสอบว่ามี method keys หรือไม่ 
                 d = dict(row) if hasattr(row, 'keys') else {'rfid_id': row[0], 'display_name': row[1] if len(row) > 1 else None}
                 if d.get('rfid_id'):
