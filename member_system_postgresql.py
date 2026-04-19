@@ -182,7 +182,7 @@ def index():
                 MAX(scan_time) as last_scan
             FROM scan_logs
             GROUP BY rfid_id
-            ORDER BY total_score DESC, scan_count DESC 
+            ORDER BY total_score DESC, scan_count DESC
         """)
         
         # ดึงข้อมูลทั้งหมดมาโชว์
@@ -206,13 +206,8 @@ def index():
         # สร้าง display_label: "ชื่อ RFID" หรือแค่ rfid_id
         for m in members:
             dn = names_map.get(str(m.get('rfid_id', '')))
-            fixname = ''
-            if m['rfid_id'] == '718597286205':
-                fixname = 'น้องหมา'
-            else:
-                fixname = m['rfid_id']
             m['display_name'] = dn
-            m['display_label'] = f"{dn} {fixname}" if dn else m['rfid_id']
+            m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
         # ตรวจสอบข้อมูลที่ได้
         print(f"DEBUG: Found {len(members)} members")
@@ -234,7 +229,7 @@ def index():
         cursor.execute("SELECT COUNT(*) as total_scans FROM scan_logs")
         total_scans_row = cursor.fetchone()
         total_scans = total_scans_row['total_scans'] if total_scans_row else 0
-
+        
         cursor.close()
         connection.close()
 
@@ -616,15 +611,6 @@ def manage_members():
         
         for m in members:
             dn = names_map.get(str(m.get('rfid_id', '')))
-
-            rfid_str = str(m.get('rfid_id', ''))
-
-            if rfid_str == "718597286205":
-                dn = 'Opal'
-
-            elif rfid_str == "1070128781870":
-                dn = 'Peem'
-
             m['display_name'] = dn
             m['display_label'] = f"{dn} {m['rfid_id']}" if dn else m['rfid_id']
         
@@ -747,21 +733,14 @@ def admin_edit_member_name():
             return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
         
         cursor = connection.cursor()
-
-        target_rfid = str(rfid_id)
-
-        if target_rfid == "718597286205":
-            display_name = 'Opal'
-        elif target_rfid == "1070128781870":
-            display_name = 'Peem'
-
+        
         try:
             if display_name:
                 cursor.execute("""
                     INSERT INTO member_names (rfid_id, display_name)
                     VALUES (%s, %s)
                     ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
-                """, (display_name , display_name))
+                """, (rfid_id, display_name))
 
             else:
                 cursor.execute("DELETE FROM member_names WHERE rfid_id = %s", (rfid_id,))
