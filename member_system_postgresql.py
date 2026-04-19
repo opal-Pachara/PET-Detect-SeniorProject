@@ -179,7 +179,7 @@ def index():
         cursor.execute("""
             SELECT rfid_id, SUM(score) as total_score,
                 COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
-                MAX(scan_time) as last_scan
+                MAX(scan_time) as last_scan,
                 SUM(bottle_count) as total_bottles
             FROM scan_logs
             GROUP BY rfid_id
