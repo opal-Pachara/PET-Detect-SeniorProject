@@ -643,7 +643,7 @@ def scan_history():
         
         scan_history = [dict(scan) for scan in scan_history]
         
-        # จัดรูปเป็น string
+        # จัดรูปเป็น stringgggg
         for scan in scan_history:
             if scan.get('scan_time'):
                 if isinstance(scan['scan_time'], str):
@@ -800,7 +800,7 @@ def sum_score(bottle_count, can_count, cap_count ,label_count):
 # ==================== API Pi Client (รับคะแนนจากการสแกน) ====================
 @app.route('/api/add_score', methods=['POST'])
 def add_score():
-    """รับข้อมูลจาก Pi หลังสแกน บันทึกลง scan_logs คำนวณ score จาก bottle/can/cap/label"""
+    """รับข้อมูลจาก Pi หลังสแกน บันทึก scan_logs; ถ้ามี display_name/member_name จะ upsert ลง member_names ให้หน้าเว็บแสดงชื่อ"""
     try:
         # สร้างตารางถ้ายังไม่มี
         init_database()
@@ -820,6 +820,7 @@ def add_score():
         cap_count = data.get('cap_count', 0)
         label_count = data.get('label_count', 0)
         image_path = data.get('image_path', '')
+        display_name = (data.get('display_name') or data.get('member_name') or '').strip()
         
         # คำนวณคะแนน: ขวด+50 กระป๋อง+100 แก๊ป-10 ฉลาก-10
         score = sum_score(bottle_count, can_count, cap_count ,label_count)
@@ -838,6 +839,13 @@ def add_score():
             INSERT INTO scan_logs (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (rfid_id, bottle_count, can_count, cap_count, label_count, score, image_path))
+
+        if display_name:
+            cursor.execute("""
+                INSERT INTO member_names (rfid_id, display_name)
+                VALUES (%s, %s)
+                ON CONFLICT (rfid_id) DO UPDATE SET display_name = EXCLUDED.display_name
+            """, (str(rfid_id), display_name[:100]))
         
         connection.commit()
         cursor.close()
