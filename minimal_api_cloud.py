@@ -167,9 +167,9 @@ def scan():
             'debug_info': {
                 'confidence_threshold': 0.6,
                 'min_area_threshold': 1000,
-                'aspect_ratio_validation': False
+                'aspect_ratio_validation': False,
             },
-            'message': f'พบ {bottles + caps + labels + cans} objects: ขวด {bottles}, ฝา {caps}, ฉลาก {labels}, กระป๋อง {cans}'
+            'message': f'พบ {bottles + caps + labels + cans} objects: ขวด {bottles}, ฝา {caps}, ฉลาก {labels}, กระป๋อง {cans}, ค่าความมั่นใจ {confidence}'
         })
         
     except Exception as e:
