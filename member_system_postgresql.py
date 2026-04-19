@@ -180,9 +180,10 @@ def index():
             SELECT rfid_id, SUM(score) as total_score,
                 COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
                 MAX(scan_time) as last_scan
+                SUM(bottle_count) as total_bottles
             FROM scan_logs
             GROUP BY rfid_id
-            ORDER BY total_score DESC, scan_count DESC ,bottle_count
+            ORDER BY total_score DESC, scan_count DESC ,total_bottles DESC
         """)
         
         # ดึงข้อมูลทั้งหมดมาโชว์
