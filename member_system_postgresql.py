@@ -180,10 +180,9 @@ def index():
             SELECT rfid_id, SUM(score) as total_score,
                 COUNT(CASE WHEN image_path != 'ADMIN_ADJUSTMENT' THEN 1 END) as scan_count,
                 MAX(scan_time) as last_scan,
-                SUM(bottle_count) as total_bottles
             FROM scan_logs
             GROUP BY rfid_id
-            ORDER BY total_score DESC, scan_count DESC ,total_bottles DESC
+            ORDER BY total_score DESC, scan_count DESC 
         """)
         
         # ดึงข้อมูลทั้งหมดมาโชว์
@@ -231,10 +230,6 @@ def index():
         total_scans_row = cursor.fetchone()
         total_scans = total_scans_row['total_scans'] if total_scans_row else 0
 
-        cursor.execute("SELECT COALESCE(SUM(bottle_count), 0) as total_bottles FROM scan_logs")
-        total_bottles_row = cursor.fetchone()
-        total_bottles = total_bottles_row['total_bottles'] if total_bottles_row else 0
-
         cursor.close()
         connection.close()
 
@@ -243,8 +238,7 @@ def index():
                              members=members, 
                              total_members=total_members,
                              total_score=total_score,
-                             total_scans=total_scans,
-                             total_bottles=total_bottles)
+                             total_scans=total_scans)
         
     except Exception as e:
         print(f"Index page error: {e}")
