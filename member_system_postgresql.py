@@ -182,7 +182,7 @@ def index():
                 MAX(scan_time) as last_scan
             FROM scan_logs
             GROUP BY rfid_id
-            ORDER BY total_score DESC, scan_count DESC ,bottle_count DESC
+            ORDER BY total_score DESC, scan_count DESC ,bottle_count
         """)
         
         # ดึงข้อมูลทั้งหมดมาโชว์
